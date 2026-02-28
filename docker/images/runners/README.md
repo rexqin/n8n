@@ -39,6 +39,7 @@ N8N_RUNNERS_ENABLED=true \
 N8N_RUNNERS_MODE=external \
 N8N_RUNNERS_AUTH_TOKEN=test \
 N8N_LOG_LEVEL=debug \
+N8N_DEFAULT_LOCALE=zh-CN \
 pnpm start
 ```
 
