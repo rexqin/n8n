@@ -112,6 +112,8 @@ jobs:
     name: Publish to DockerHub
     needs: [determine-version-info]
     uses: ./.github/workflows/docker-build-push.yml
+    permissions:
+      actions: read
     with:
       n8n_version: ${{ needs.determine-version-info.outputs.version }}
       release_type: ${{ needs.determine-version-info.outputs.release_type }}
