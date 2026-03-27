@@ -47,12 +47,21 @@ jobs:
     environment: release
 
     steps:
+      - name: Fetch secrets from Infisical
+        uses: Infisical/secrets-action@v1.0.15
+        with:
+          method: oidc
+          identity-id: 436a2630-fad8-475b-8f00-5ab158e9919e
+          project-slug: project-nd-zj
+          env-slug: dev
+          secret-path: /n8n
+
       - name: Generate GitHub App Token
         id: generate_token
         uses: actions/create-github-app-token@29824e69f54612133e76f7eaac726eef6c875baf # v2.2.1
         with:
-          app-id: ${{ secrets.N8N_ASSISTANT_APP_ID }}
-          private-key: ${{ secrets.N8N_ASSISTANT_PRIVATE_KEY }}
+          app-id: ${{ env.N8N_ASSISTANT_APP_ID }}
+          private-key: ${{ env.N8N_ASSISTANT_PRIVATE_KEY }}
 
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2

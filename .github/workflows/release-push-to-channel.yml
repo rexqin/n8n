@@ -29,6 +29,10 @@ on:
           - beta
           - stable
 
+permissions:
+  contents: read
+  id-token: write
+
 jobs:
   validate-inputs:
     name: Validate Inputs
@@ -73,6 +77,15 @@ jobs:
     permissions:
       id-token: write
     steps:
+      - name: Fetch secrets from Infisical
+        uses: Infisical/secrets-action@v1.0.15
+        with:
+          method: oidc
+          identity-id: 436a2630-fad8-475b-8f00-5ab158e9919e
+          project-slug: project-nd-zj
+          env-slug: dev
+          secret-path: /n8n
+
       - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
         with:
           node-version: 24.13.1
@@ -80,7 +93,7 @@ jobs:
       # Remove after https://github.com/npm/cli/issues/8547 gets resolved
       - run: echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}" > ~/.npmrc
         env:
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_TOKEN: ${{ env.NPM_TOKEN }}
 
       - name: Add beta/next tags to NPM
         if: needs.validate-inputs.outputs.release_channel == 'beta'
@@ -104,13 +117,22 @@ jobs:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
+      - name: Fetch secrets from Infisical
+        uses: Infisical/secrets-action@v1.0.15
+        with:
+          method: oidc
+          identity-id: 436a2630-fad8-475b-8f00-5ab158e9919e
+          project-slug: project-nd-zj
+          env-slug: dev
+          secret-path: /n8n
+
       - name: Login to DockerHub
         uses: ./.github/actions/docker-registry-login
         with:
           login-ghcr: false
           login-dockerhub: true
-          dockerhub-username: ${{ secrets.DOCKER_USERNAME }}
-          dockerhub-password: ${{ secrets.DOCKER_PASSWORD }}
+          dockerhub-username: ${{ env.DOCKER_USERNAME }}
+          dockerhub-password: ${{ env.DOCKER_PASSWORD }}
 
       - name: Tag stable/latest Docker image
         if: needs.validate-inputs.outputs.release_channel == 'stable'
@@ -125,7 +147,7 @@ jobs:
       - name: Tag beta/next Docker image
         if: needs.validate-inputs.outputs.release_channel == 'beta'
         env:
-          DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+          DOCKER_USERNAME: ${{ env.DOCKER_USERNAME }}
         run: |
           docker buildx imagetools create -t "${DOCKER_USERNAME}/n8n:beta" "${DOCKER_USERNAME}/n8n:${{ needs.validate-inputs.outputs.version }}"
           docker buildx imagetools create -t "${DOCKER_USERNAME}/n8n:next" "${DOCKER_USERNAME}/n8n:${{ needs.validate-inputs.outputs.version }}"
@@ -169,5 +191,16 @@ jobs:
     needs: [validate-inputs, release-to-npm, release-to-docker-hub]
     environment: release
     steps:
+      - name: Fetch secrets from Infisical
+        uses: Infisical/secrets-action@v1.0.15
+        with:
+          method: oidc
+          identity-id: 436a2630-fad8-475b-8f00-5ab158e9919e
+          project-slug: project-nd-zj
+          env-slug: dev
+          secret-path: /n8n
+
       - continue-on-error: true
-        run: curl -u docsWorkflows:${{ secrets.N8N_WEBHOOK_DOCS_PASSWORD }} --request GET 'https://internal.users.n8n.cloud/webhook/update-latest-next'
+        env:
+          DOCS_PASSWORD: ${{ env.N8N_WEBHOOK_DOCS_PASSWORD }}
+        run: curl -u "docsWorkflows:${DOCS_PASSWORD}" --request GET 'https://internal.users.n8n.cloud/webhook/update-latest-next'

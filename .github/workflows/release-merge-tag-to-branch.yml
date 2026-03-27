@@ -13,6 +13,10 @@ on:
         required: true
         type: string
 
+permissions:
+  contents: write
+  id-token: write
+
 jobs:
   merge-tag-to-branch:
     name: Merge release tag to ${{ inputs.target-branch }}
@@ -22,12 +26,21 @@ jobs:
       VERSION: ${{ inputs.version }}
       TARGET_BRANCH: ${{ inputs.target-branch }}
     steps:
+      - name: Fetch secrets from Infisical
+        uses: Infisical/secrets-action@v1.0.15
+        with:
+          method: oidc
+          identity-id: 436a2630-fad8-475b-8f00-5ab158e9919e
+          project-slug: project-nd-zj
+          env-slug: dev
+          secret-path: /n8n
+
       - name: Generate GitHub App Token
         id: generate_token
         uses: actions/create-github-app-token@29824e69f54612133e76f7eaac726eef6c875baf # v2.2.1
         with:
-          app-id: ${{ secrets.RELEASE_TAG_MERGE_APP_ID }}
-          private-key: ${{ secrets.RELEASE_TAG_MERGE_PRIVATE_KEY }}
+          app-id: ${{ env.RELEASE_TAG_MERGE_APP_ID }}
+          private-key: ${{ env.RELEASE_TAG_MERGE_PRIVATE_KEY }}
           skip-token-revoke: false
 
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -61,6 +74,6 @@ jobs:
         with:
           status: ${{ job.status }}
           channel: '#updates-and-product-releases'
-          webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}
+          webhook-url: ${{ env.SLACK_WEBHOOK_URL }}
           message: |
             <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}| Release tag merge to ${{ inputs.target-branch }} failed for n8n@${{ inputs.version }} >

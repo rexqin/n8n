@@ -31,6 +31,10 @@ on:
         type: boolean
         default: false
 
+permissions:
+  contents: read
+  id-token: write
+
 jobs:
   determine-changes:
     runs-on: ubuntu-slim
@@ -43,6 +47,15 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 0
+
+      - name: Fetch secrets from Infisical
+        uses: Infisical/secrets-action@v1.0.15
+        with:
+          method: oidc
+          identity-id: 436a2630-fad8-475b-8f00-5ab158e9919e
+          project-slug: project-nd-zj
+          env-slug: dev
+          secret-path: /n8n
 
       - name: Setup Node.js
         uses: ./.github/actions/setup-nodejs
@@ -60,7 +73,7 @@ jobs:
       - name: Populate databases
         id: populate-databases
         env:
-          N8N_POPULATE_CLOUD_WEBHOOK_DATA: ${{ secrets.N8N_POPULATE_CLOUD_WEBHOOK_DATA }}
+          N8N_POPULATE_CLOUD_WEBHOOK_DATA: ${{ env.N8N_POPULATE_CLOUD_WEBHOOK_DATA }}
           PAYLOAD: |
             {
               "target_version_to_update": "${{ inputs.version }}",

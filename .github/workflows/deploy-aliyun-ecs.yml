@@ -19,10 +19,6 @@ on:
         description: 'Git ref to deploy (branch/tag/commit)，留空则用当前触发提交'
         required: false
         default: ''
-  push:
-    branches:
-      - develop
-      - main
 
 concurrency:
   group: deploy-aliyun-ecs

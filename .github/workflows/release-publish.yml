@@ -1,5 +1,9 @@
 name: 'Release: Publish'
 
+permissions:
+  contents: read
+  id-token: write
+
 on:
   pull_request:
     types:
@@ -44,6 +48,7 @@ jobs:
     timeout-minutes: 20
     environment: npm
     permissions:
+      contents: read
       id-token: write
     env:
       NPM_CONFIG_PROVENANCE: true
@@ -52,11 +57,20 @@ jobs:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
+      - name: Fetch secrets from Infisical
+        uses: Infisical/secrets-action@v1.0.15
+        with:
+          method: oidc
+          identity-id: 436a2630-fad8-475b-8f00-5ab158e9919e
+          project-slug: project-nd-zj
+          env-slug: dev
+          secret-path: /n8n
+
       - name: Setup and Build
         uses: ./.github/actions/setup-nodejs
         env:
           N8N_FAIL_ON_POPULARITY_FETCH_ERROR: true
-          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_AUTH_TOKEN: ${{ env.SENTRY_AUTH_TOKEN }}
 
       - name: Check for new unpublished packages
         run: node .github/scripts/detect-new-packages.mjs
@@ -139,6 +153,10 @@ jobs:
   generate-and-attach-sbom:
     name: Generate and Attach SBOM to Release
     needs: [determine-version-info, create-github-release]
+    permissions:
+      contents: write
+      attestations: write
+      id-token: write
     uses: ./.github/workflows/sbom-generation-callable.yml
     with:
       n8n_version: ${{ needs.determine-version-info.outputs.version }}
