@@ -112,7 +112,11 @@ jobs:
     name: Publish to DockerHub
     needs: [determine-version-info]
     uses: ./.github/workflows/docker-build-push.yml
+    # Caller must grant everything docker-build-push.yml declares (job-level permissions replace defaults for this call).
     permissions:
+      contents: read
+      id-token: write
+      packages: write
       actions: read
     with:
       n8n_version: ${{ needs.determine-version-info.outputs.version }}
