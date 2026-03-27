@@ -398,7 +398,7 @@ jobs:
     permissions:
       id-token: write
       packages: write
-      actions: read
+      actions: none
     uses: slsa-framework/slsa-github-generator/.github/workflows/generator_container_slsa3.yml@f7dd8c54c2067bafc12ca7a55595d5ee9b75204a
     with:
       image: ${{ needs.create_multi_arch_manifest.outputs.runners_image }}
@@ -416,7 +416,7 @@ jobs:
     permissions:
       id-token: write
       packages: write
-      actions: read
+      actions: none
     uses: slsa-framework/slsa-github-generator/.github/workflows/generator_container_slsa3.yml@f7dd8c54c2067bafc12ca7a55595d5ee9b75204a
     with:
       image: ${{ needs.create_multi_arch_manifest.outputs.runners_distroless_image }}
