@@ -31,6 +31,14 @@ export function determineTrack(packageVersion) {
 	// Check through our current release versions, if semver matches,
 	// we inherit the track pointer from them
 	for (const [releaseTrack, tagVersionInfo] of Object.entries(trackToReleaseMap)) {
+		console.log(
+			'Checking track: ',
+			releaseTrack,
+			' with version: ',
+			tagVersionInfo.version,
+			' and package version: ',
+			packageVersion,
+		);
 		if (tagVersionInfo && matchesTrack(tagVersionInfo, packageVersion)) {
 			track = releaseTrack;
 			break;
