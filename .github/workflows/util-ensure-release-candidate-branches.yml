@@ -10,19 +10,24 @@ jobs:
     runs-on: ubuntu-slim
     permissions:
       contents: write
+      id-token: write
     steps:
-      - name: Generate GitHub App Token
-        id: generate_token
-        uses: actions/create-github-app-token@29824e69f54612133e76f7eaac726eef6c875baf # v2.2.1
+      - name: Fetch secrets from Infisical
+        uses: Infisical/secrets-action@v1.0.15
         with:
-          app-id: ${{ secrets.N8N_ASSISTANT_APP_ID }}
-          private-key: ${{ secrets.N8N_ASSISTANT_PRIVATE_KEY }}
+          method: oidc
+          identity-id: 436a2630-fad8-475b-8f00-5ab158e9919e
+          project-slug: project-nd-zj
+          env-slug: dev
+          secret-path: /n8n
 
+      # GITHUB_TOKEN from Infisical (e.g. fine-grained PAT with contents: write) for fetch/push of release-candidate/* branches.
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 0
           fetch-tags: true
+          token: ${{ env.GITHUB_TOKEN }}
 
       - name: Setup NodeJS
         uses: ./.github/actions/setup-nodejs
