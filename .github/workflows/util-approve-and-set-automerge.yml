@@ -12,6 +12,7 @@ on:
 permissions:
   contents: write
   pull-requests: write
+  id-token: write
 
 jobs:
   approve-and-automerge:
@@ -20,16 +21,18 @@ jobs:
     runs-on: ubuntu-slim
     environment: release
     steps:
-      - name: Generate GitHub App Token
-        id: generate-token
-        uses: actions/create-github-app-token@29824e69f54612133e76f7eaac726eef6c875baf # v2.2.1
+      - name: Fetch secrets from Infisical
+        uses: Infisical/secrets-action@v1.0.15
         with:
-          app-id: ${{ secrets.N8N_RELEASE_HELPER_APP_ID }}
-          private-key: ${{ secrets.N8N_RELEASE_HELPER_PRIVATE_KEY }}
+          method: oidc
+          identity-id: 436a2630-fad8-475b-8f00-5ab158e9919e
+          project-slug: project-nd-zj
+          env-slug: dev
+          secret-path: /n8n
 
       - name: Approve PR (as the App)
         env:
-          GH_TOKEN: ${{ steps.generate-token.outputs.token }}
+          GH_TOKEN: ${{ env.GITHUB_TOKEN }}
         run: |
           gh pr review "${{ inputs.pull-request-number }}" \
             --approve \
@@ -37,7 +40,7 @@ jobs:
 
       - name: Enable auto-merge (merge when checks pass)
         env:
-          GH_TOKEN: ${{ steps.generate-token.outputs.token }}
+          GH_TOKEN: ${{ env.GITHUB_TOKEN }}
         run: |
           gh pr merge "${{ inputs.pull-request-number }}" \
             --auto \
