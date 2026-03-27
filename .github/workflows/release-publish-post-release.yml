@@ -54,6 +54,9 @@ jobs:
     if: |
       inputs.release_type != 'rc' &&
       inputs.bump == 'minor'
+    permissions:
+      contents: write
+      id-token: write
     uses: ./.github/workflows/release-promote-github-release.yml
     secrets: inherit
     with:
@@ -63,6 +66,8 @@ jobs:
     name: 'Ensure release candidate branches'
     if: |
       inputs.release_type != 'rc'
+    permissions:
+      contents: write
     uses: ./.github/workflows/util-ensure-release-candidate-branches.yml
     secrets: inherit
 
