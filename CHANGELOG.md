@@ -1,3 +1,11 @@
+# [2.15.0](https://github.com/rexqin/n8n/compare/n8n@2.14.3...n8n@2.15.0) (2026-03-27)
+
+
+### Features
+
+* Update ([4456d81](https://github.com/rexqin/n8n/commit/4456d8188f7c3bf1fffd8b3acac4d6f52bb2fd4d))
+
+
 # [2.14.3](https://github.com/n8n-io/n8n/compare/n8n@2.13.0...n8n@2.14.3) (2026-03-24)
 
 
