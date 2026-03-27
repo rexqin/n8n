@@ -1,3 +1,11 @@
+# [2.15.0](https://github.com/rexqin/n8n/compare/n8n@2.14.2...n8n@2.15.0) (2026-03-27)
+
+
+### Features
+
+*  remove token ([6393748](https://github.com/rexqin/n8n/commit/6393748ad72640e6ee7ac579b2ac5b467ca94d2f))
+
+
 # [2.14.0](https://github.com/n8n-io/n8n/compare/n8n@2.13.0...n8n@2.14.0) (2026-03-24)
 
 
