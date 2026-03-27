@@ -48,6 +48,7 @@ jobs:
     timeout-minutes: 20
     environment: npm
     permissions:
+      contents: read
       id-token: write
     env:
       NPM_CONFIG_PROVENANCE: true
@@ -152,6 +153,10 @@ jobs:
   generate-and-attach-sbom:
     name: Generate and Attach SBOM to Release
     needs: [determine-version-info, create-github-release]
+    permissions:
+      contents: write
+      attestations: write
+      id-token: write
     uses: ./.github/workflows/sbom-generation-callable.yml
     with:
       n8n_version: ${{ needs.determine-version-info.outputs.version }}
