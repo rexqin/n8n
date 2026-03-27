@@ -13,6 +13,8 @@ permissions:
   contents: read
   id-token: write
   packages: write
+  # slsa-github-generator reusable workflows (provenance-n8n, etc.) require actions: read on GITHUB_TOKEN
+  actions: read
 
 on:
   schedule:
