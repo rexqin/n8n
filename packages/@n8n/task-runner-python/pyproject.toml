@@ -5,6 +5,8 @@ description = "Native Python task runner for n8n"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
+    "playwright>=1.55.0",
+    "pydoll>=2.2.5",
     "websockets>=15.0.1",
 ]
 

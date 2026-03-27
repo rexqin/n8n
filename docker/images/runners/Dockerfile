@@ -43,6 +43,7 @@ RUN apk add --no-cache --virtual .build-deps python3 make g++ && \
 FROM python:${PYTHON_VERSION}-alpine AS python-runner-builder
 ARG TARGETPLATFORM
 ARG UV_VERSION=0.8.14
+ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
 
 RUN set -e; \
   case "$TARGETPLATFORM" in \
@@ -81,7 +82,9 @@ RUN uv sync \
       --no-editable
 
 # Install the python runner package itself into site packages. We can remove the src directory then
+
 RUN uv pip install . && rm -rf /app/task-runner-python/src
+RUN /app/task-runner-python/.venv/bin/playwright install chrome
 
 # ==============================================================================
 # STAGE 3: Task Runner Launcher download
@@ -119,7 +122,8 @@ ARG N8N_RELEASE_TYPE=dev
 
 ENV NODE_ENV=production \
     N8N_RELEASE_TYPE=${N8N_RELEASE_TYPE} \
-    SHELL=/bin/sh
+    SHELL=/bin/sh \
+    PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
 
 # Bring `uv` over from python-runner-builder, to make the image easier to extend
 COPY --from=python-runner-builder /usr/local/bin/uv /usr/local/bin/uv
@@ -146,6 +150,7 @@ WORKDIR /home/runner
 
 COPY --from=javascript-runner-builder --chown=root:root /app/task-runner-javascript /opt/runners/task-runner-javascript
 COPY --from=python-runner-builder --chown=root:root /app/task-runner-python /opt/runners/task-runner-python
+COPY --from=python-runner-builder --chown=root:root /ms-playwright /ms-playwright
 COPY --from=launcher-downloader /launcher-bin/* /usr/local/bin/
 COPY --chown=root:root docker/images/runners/n8n-task-runners.json /etc/n8n-task-runners.json
 
