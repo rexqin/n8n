@@ -11,10 +11,6 @@ on:
         description: 'Git reference to checkout (e.g. n8n@1.2.3)'
         required: true
         type: string
-    secrets:
-      SLACK_WEBHOOK_URL:
-        required: true
-
   workflow_dispatch:
     inputs:
       n8n_version:
@@ -38,6 +34,15 @@ jobs:
     timeout-minutes: 15
     continue-on-error: true
     steps:
+      - name: Fetch secrets from Infisical
+        uses: Infisical/secrets-action@v1.0.15
+        with:
+          method: oidc
+          identity-id: 436a2630-fad8-475b-8f00-5ab158e9919e
+          project-slug: project-nd-zj
+          env-slug: dev
+          secret-path: /n8n
+
       - name: Checkout release tag
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
@@ -83,6 +88,6 @@ jobs:
         with:
           status: ${{ job.status }}
           channel: '#alerts-build'
-          webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}
+          webhook-url: ${{ env.SLACK_WEBHOOK_URL }}
           message: |
             <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}| SBOM generation and attachment failed for release ${{ inputs.release_tag_ref }} >

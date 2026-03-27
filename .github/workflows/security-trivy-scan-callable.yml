@@ -13,15 +13,12 @@ on:
         type: string
         description: 'Full image reference to scan e.g. ghcr.io/n8n-io/n8n:latest'
         required: true
-    secrets:
-      QBOT_SLACK_TOKEN:
-        required: true
 
 permissions:
   contents: read
+  id-token: write
 
 env:
-  QBOT_SLACK_TOKEN: ${{ secrets.QBOT_SLACK_TOKEN }}
   SLACK_CHANNEL_ID: C0AHNJU9XFA #updates-security
 
 jobs:
@@ -29,6 +26,15 @@ jobs:
     name: Security - Scan Docker Image With Trivy
     runs-on: ubuntu-latest
     steps:
+      - name: Fetch secrets from Infisical
+        uses: Infisical/secrets-action@v1.0.15
+        with:
+          method: oidc
+          identity-id: 436a2630-fad8-475b-8f00-5ab158e9919e
+          project-slug: project-nd-zj
+          env-slug: dev
+          secret-path: /n8n
+
       - name: Checkout for VEX file
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
@@ -249,7 +255,7 @@ jobs:
         uses: slackapi/slack-github-action@91efab103c0de0a537f72a35f6b8cda0ee76bf0a # v2.1.1
         with:
           method: chat.postMessage
-          token: ${{ secrets.QBOT_SLACK_TOKEN }}
+          token: ${{ env.QBOT_SLACK_TOKEN }}
           payload: |
             channel: ${{ env.SLACK_CHANNEL_ID }}
             text: "🚨 Trivy Scan: ${{ steps.process_results.outputs.critical_count }} Critical, ${{ steps.process_results.outputs.high_count }} High, ${{ steps.process_results.outputs.medium_count }} Medium, ${{ steps.process_results.outputs.low_count }} Low vulnerabilities found in ${{ inputs.image_ref }}"

@@ -23,6 +23,10 @@ on:
         required: true
         type: string
 
+permissions:
+  contents: read
+  id-token: write
+
 jobs:
   release-notification:
     runs-on: ubuntu-slim
@@ -33,6 +37,15 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Fetch secrets from Infisical
+        uses: Infisical/secrets-action@v1.0.15
+        with:
+          method: oidc
+          identity-id: 436a2630-fad8-475b-8f00-5ab158e9919e
+          project-slug: project-nd-zj
+          env-slug: dev
+          secret-path: /n8n
+
       - name: Setup Node.js
         uses: ./.github/actions/setup-nodejs
         with:
@@ -41,7 +54,7 @@ jobs:
 
       - name: Send release notification
         env:
-          N8N_VERSION_RELEASE_NOTIFICATION_DATA: ${{ secrets.N8N_VERSION_RELEASE_NOTIFICATION_DATA }}
+          N8N_VERSION_RELEASE_NOTIFICATION_DATA: ${{ env.N8N_VERSION_RELEASE_NOTIFICATION_DATA }}
           PAYLOAD: |
             {
               "previous_version": "${{ inputs.previous-version }}",
