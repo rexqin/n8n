@@ -32,6 +32,10 @@ jobs:
   push-new-release-to-channel:
     name: Push new release to channel
     if: inputs.release_type != 'rc'
+    permissions:
+      contents: read
+      id-token: write
+      packages: write
     uses: ./.github/workflows/release-push-to-channel.yml
     secrets: inherit
     with:
@@ -43,6 +47,10 @@ jobs:
     if: |
       inputs.release_type != 'rc' &&
       inputs.bump == 'minor'
+    permissions:
+      contents: read
+      id-token: write
+      packages: write
     uses: ./.github/workflows/release-push-to-channel.yml
     secrets: inherit
     with:
