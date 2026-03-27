@@ -44,6 +44,8 @@ for (let { name, path, version, private: isPrivate, dependencies } of packages) 
 	packageMap[name] = { path, isDirty, version };
 }
 
+console.log('Package map: ', packageMap);
+
 assert.ok(
 	Object.values(packageMap).some(({ isDirty }) => isDirty),
 	'No changes found since the last release',
@@ -100,6 +102,7 @@ for (const packageName in packageMap) {
 				break;
 			default:
 				newVersion = semver.inc(version, releaseType);
+				console.log('New version: ', newVersion);
 				break;
 		}
 	}
@@ -108,5 +111,6 @@ for (const packageName in packageMap) {
 
 	await writeFile(packageFile, JSON.stringify(packageJson, null, 2) + '\n');
 }
+console.log('Package map after: ', packageMap);
 
 console.log(packageMap['n8n'].nextVersion);
