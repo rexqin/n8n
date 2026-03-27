@@ -40,6 +40,7 @@ on:
 permissions:
   contents: write
   pull-requests: write
+  id-token: write
 
 jobs:
   create-release-pr:
@@ -48,6 +49,7 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
+      id-token: write
 
     timeout-minutes: 5
 
@@ -55,18 +57,21 @@ jobs:
       pull-request-number: ${{ steps.create-pr.outputs.pull-request-number }}
 
     steps:
-      - name: Generate GitHub App Token
-        id: generate_token
-        uses: actions/create-github-app-token@29824e69f54612133e76f7eaac726eef6c875baf # v2.2.1
+      - name: Fetch secrets from Infisical
+        uses: Infisical/secrets-action@v1.0.15
         with:
-          app-id: ${{ secrets.N8N_ASSISTANT_APP_ID }}
-          private-key: ${{ secrets.N8N_ASSISTANT_PRIVATE_KEY }}
+          method: oidc
+          identity-id: 436a2630-fad8-475b-8f00-5ab158e9919e
+          project-slug: project-nd-zj
+          env-slug: dev
+          secret-path: /n8n
 
+      # GITHUB_TOKEN must be stored in Infisical (e.g. fine-grained PAT with contents + pull-requests).
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 0
-          token: ${{ steps.generate_token.outputs.token }}
+          token: ${{ env.GITHUB_TOKEN }}
 
       # Checkout base branch via separate step to prevent unsafe actions/checkout ref usage.
       # poutine: untrusted_checkout_exec
@@ -122,7 +127,7 @@ jobs:
         uses: peter-evans/create-pull-request@c0f553fe549906ede9cf27b5156039d195d2ece0 # v8.1.0
         id: create-pr
         with:
-          token: ${{ steps.generate_token.outputs.token }}
+          token: ${{ env.GITHUB_TOKEN }}
           base: 'release/${{ env.NEXT_RELEASE }}'
           branch: 'release-pr/${{ env.NEXT_RELEASE }}'
           commit-message: ':rocket: Release ${{ env.NEXT_RELEASE }}'
