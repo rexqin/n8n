@@ -132,6 +132,7 @@ jobs:
 
       - name: Build Aliyun tags for all images
         id: aliyun-tags
+        if: needs.determine-build-context.outputs.push_enabled == 'true'
         run: |
           set -euo pipefail
 
