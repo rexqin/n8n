@@ -180,7 +180,7 @@ jobs:
           provenance: false # Disabled - using SLSA L3 generator for isolated provenance
           sbom: true
           push: ${{ needs.determine-build-context.outputs.push_enabled == 'true' }}
-          tags: ${{ steps.determine-tags.outputs.n8n_tags }},${{ steps.aliyun-tags.outputs.n8n_tags }}
+          tags: ${{ steps.determine-tags.outputs.n8n_tags }}${{ steps.aliyun-tags.outputs.n8n_tags && format(',{0}', steps.aliyun-tags.outputs.n8n_tags) || '' }}
 
       - name: Build and push task runners Docker image (Alpine)
         id: build-runners

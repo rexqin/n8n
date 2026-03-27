@@ -201,4 +201,6 @@ jobs:
           secret-path: /n8n
 
       - continue-on-error: true
-        run: curl -u docsWorkflows:${{ env.N8N_WEBHOOK_DOCS_PASSWORD }} --request GET 'https://internal.users.n8n.cloud/webhook/update-latest-next'
+        env:
+          DOCS_PASSWORD: ${{ env.N8N_WEBHOOK_DOCS_PASSWORD }}
+        run: curl -u "docsWorkflows:${DOCS_PASSWORD}" --request GET 'https://internal.users.n8n.cloud/webhook/update-latest-next'
