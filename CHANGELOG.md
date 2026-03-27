@@ -1,4 +1,4 @@
-# [2.14.0](https://github.com/n8n-io/n8n/compare/n8n@2.13.0...n8n@2.14.0) (2026-03-24)
+# [2.14.3](https://github.com/n8n-io/n8n/compare/n8n@2.13.0...n8n@2.14.3) (2026-03-24)
 
 
 ### Bug Fixes
