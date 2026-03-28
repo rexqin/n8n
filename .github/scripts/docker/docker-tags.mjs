@@ -28,7 +28,7 @@ class TagGenerator {
 				: [];
 
 		const tags = {
-			docker: includeDockerHub ? [`dolphinux${imageName}:${fullVersion}`] : [],
+			docker: includeDockerHub ? [`dolphinux/${imageName}:${fullVersion}`] : [],
 			aliyun,
 		};
 
