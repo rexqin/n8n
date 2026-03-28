@@ -79,6 +79,9 @@ jobs:
     needs: determine-build-context
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 25
+    env:
+      # BuildKit may still attach default attestations; some registries reject them (unknown: blob type invalid)
+      BUILDX_NO_DEFAULT_ATTESTATIONS: 1
     strategy:
       matrix: ${{ fromJSON(needs.determine-build-context.outputs.build_matrix) }}
     outputs:
