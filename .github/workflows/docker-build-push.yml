@@ -181,7 +181,8 @@ jobs:
             N8N_RELEASE_TYPE=${{ needs.determine-build-context.outputs.release_type }}
           platforms: ${{ matrix.docker_platform }}
           provenance: false # Disabled - using SLSA L3 generator for isolated provenance
-          sbom: true
+          # SBOM attestations can cause "unknown: blob type invalid" on some registries (e.g. GHCR/ACR)
+          sbom: false
           push: ${{ needs.determine-build-context.outputs.push_enabled == 'true' }}
           tags: ${{ steps.determine-tags.outputs.n8n_tags }}${{ steps.aliyun-tags.outputs.n8n_tags && format(',{0}', steps.aliyun-tags.outputs.n8n_tags) || '' }}
 
@@ -197,7 +198,7 @@ jobs:
             N8N_RELEASE_TYPE=${{ needs.determine-build-context.outputs.release_type }}
           platforms: ${{ matrix.docker_platform }}
           provenance: false # Disabled - using SLSA L3 generator for isolated provenance
-          sbom: true
+          sbom: false
           push: ${{ needs.determine-build-context.outputs.push_enabled == 'true' }}
           tags: ${{ steps.determine-tags.outputs.runners_tags }},${{ steps.aliyun-tags.outputs.runners_tags }}
 
@@ -213,7 +214,7 @@ jobs:
             N8N_RELEASE_TYPE=${{ needs.determine-build-context.outputs.release_type }}
           platforms: ${{ matrix.docker_platform }}
           provenance: false # Disabled - using SLSA L3 generator for isolated provenance
-          sbom: true
+          sbom: false
           push: ${{ needs.determine-build-context.outputs.push_enabled == 'true' }}
           tags: ${{ steps.determine-tags.outputs.runners_distroless_tags }},${{ steps.aliyun-tags.outputs.runners_distroless_tags }}
 
