@@ -66,18 +66,19 @@ COPY packages/@n8n/task-runner-python/pyproject.toml \
     ./
 
 RUN uv venv
+# Omit optional "browser" (playwright/pydoll); those deps are installed only in Dockerfile.distroless
 RUN uv sync \
     --frozen \
     --no-editable \
     --no-install-project \
     --no-dev \
-    --all-extras
+    --extra sentry
 
 COPY packages/@n8n/task-runner-python/ ./
 RUN uv sync \
     --frozen \
     --no-dev \
-    --all-extras \
+    --extra sentry \
     --no-editable
 
 # Install the python runner package itself into site packages. We can remove the src directory then

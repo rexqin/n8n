@@ -84,6 +84,7 @@ COPY packages/@n8n/task-runner-python/pyproject.toml \
     ./
 
 RUN uv venv
+# Full optional set: sentry + browser (playwright/pydoll) for cloud/distroless image only
 RUN uv sync \
     --frozen \
     --no-editable \
