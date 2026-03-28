@@ -29,7 +29,12 @@ assert.match(releaseType, /^(patch|minor|major|experimental|premajor)$/, 'Invali
 // TODO: if releaseType is `auto` determine release type based on the changelog
 
 const lastTag = (await exec('git describe --tags --match "n8n@*" --abbrev=0')).stdout.trim();
-const packages = JSON.parse((await exec('pnpm ls -r --only-projects --json')).stdout);
+
+const EXEC_MAX_BUFFER_BYTES = 64 * 1024 * 1024;
+const { stdout } = await exec('pnpm ls -r --only-projects --json', {
+	maxBuffer: EXEC_MAX_BUFFER_BYTES,
+});
+const packages = JSON.parse(stdout);
 
 const packageMap = {};
 for (let { name, path, version, private: isPrivate, dependencies } of packages) {
