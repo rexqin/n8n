@@ -9,7 +9,12 @@ const exec = promisify(child_process.exec);
 const commonFiles = ['LICENSE.md', 'LICENSE_EE.md'];
 
 const baseDir = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
-const packages = JSON.parse((await exec('pnpm ls -r --only-projects --json')).stdout);
+
+const EXEC_MAX_BUFFER_BYTES = 64 * 1024 * 1024;
+const { stdout } = await exec('pnpm ls -r --only-projects --json', {
+	maxBuffer: EXEC_MAX_BUFFER_BYTES,
+});
+const packages = JSON.parse(stdout);
 
 for (let { name, path, version, private: isPrivate } of packages) {
 	if (isPrivate) continue;

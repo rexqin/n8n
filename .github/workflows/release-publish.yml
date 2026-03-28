@@ -83,7 +83,7 @@ jobs:
 
       - name: Pre publishing changes
         env:
-          NODE_OPTIONS: '--max-old-space-size=6144'
+          NODE_OPTIONS: '--max-old-space-size=9144'
         run: |
           node .github/scripts/trim-fe-packageJson.js
           node .github/scripts/ensure-provenance-fields.mjs
