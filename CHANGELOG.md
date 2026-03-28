@@ -1,3 +1,17 @@
+## [2.14.4](https://github.com/rexqin/n8n/compare/n8n@2.14.3...n8n@2.14.4) (2026-03-28)
+
+
+### Bug Fixes
+
+* **ci:** 增大 detect-new-packages 中 pnpm ls 的 exec maxBuffer ([43ea4c3](https://github.com/rexqin/n8n/commit/43ea4c3cd5d0d413f3edf059f2bccc1818e1f28e))
+* **ci:** 增大 ensure-provenance-fields 的 pnpm ls maxBuffer 与发布流程 Node 堆内存 ([f6227d1](https://github.com/rexqin/n8n/commit/f6227d1e5497ca009b235a2d273eb796f80099a3))
+
+
+### Features
+
+* update ([ac22d67](https://github.com/rexqin/n8n/commit/ac22d67a0451cc84b156ce44b7a143dde13bdc4a))
+
+
 # [2.14.3](https://github.com/n8n-io/n8n/compare/n8n@2.13.0...n8n@2.14.3) (2026-03-24)
 
 
