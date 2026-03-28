@@ -106,14 +106,6 @@ jobs:
           RELEASE: ${{ needs.determine-build-context.outputs.n8n_version }}
           SENTRY_AUTH_TOKEN: ${{ env.SENTRY_AUTH_TOKEN }}
 
-      - name: Validate Aliyun ACR variables
-        if: needs.determine-build-context.outputs.push_enabled == 'true'
-        run: |
-          test -n "${ACR_REGISTRY:-}" || { echo "::error::Missing ACR_REGISTRY from Infisical"; exit 1; }
-          test -n "${ACR_NAMESPACE:-}" || { echo "::error::Missing ACR_NAMESPACE from Infisical"; exit 1; }
-          test -n "${ACR_USERNAME:-}" || { echo "::error::Missing ACR_USERNAME from Infisical"; exit 1; }
-          test -n "${ACR_PASSWORD:-}" || { echo "::error::Missing ACR_PASSWORD from Infisical"; exit 1; }
-
       - name: Determine Docker tags for all images
         id: determine-tags
         run: |
@@ -128,6 +120,66 @@ jobs:
           cat "$GITHUB_OUTPUT" | grep "_tags=" | while IFS='=' read -r key value; do
             echo "${key}: ${value%%,*}..."  # Show first tag for brevity
           done
+
+      - name: Build n8n Docker image (load to daemon)
+        id: build-n8n
+        uses: docker/build-push-action@d08e5c354a6adb9ed34480a06d141179aa583294 # v7.0.0
+        with:
+          context: .
+          file: ./docker/images/n8n/Dockerfile
+          build-args: |
+            NODE_VERSION=${{ env.NODE_VERSION }}
+            N8N_VERSION=${{ needs.determine-build-context.outputs.n8n_version }}
+            N8N_RELEASE_TYPE=${{ needs.determine-build-context.outputs.release_type }}
+          platforms: ${{ matrix.docker_platform }}
+          # Explicitly disable attestations; some registries (e.g. Aliyun ACR) return "unknown: blob type invalid"
+          provenance: false
+          sbom: false
+          load: true
+          push: false
+          tags: ${{ steps.determine-tags.outputs.n8n_tags }}
+
+      - name: Build task runners Docker image (Alpine, load to daemon)
+        id: build-runners
+        uses: docker/build-push-action@d08e5c354a6adb9ed34480a06d141179aa583294 # v7.0.0
+        with:
+          context: .
+          file: ./docker/images/runners/Dockerfile
+          build-args: |
+            NODE_VERSION=${{ env.NODE_VERSION }}
+            N8N_VERSION=${{ needs.determine-build-context.outputs.n8n_version }}
+            N8N_RELEASE_TYPE=${{ needs.determine-build-context.outputs.release_type }}
+          platforms: ${{ matrix.docker_platform }}
+          provenance: false
+          sbom: false
+          load: true
+          push: false
+          tags: ${{ steps.determine-tags.outputs.runners_tags }}
+
+      - name: Build task runners Docker image (distroless, load to daemon)
+        id: build-runners-distroless
+        uses: docker/build-push-action@d08e5c354a6adb9ed34480a06d141179aa583294 # v7.0.0
+        with:
+          context: .
+          file: ./docker/images/runners/Dockerfile.distroless
+          build-args: |
+            NODE_VERSION=${{ env.NODE_VERSION }}
+            N8N_VERSION=${{ needs.determine-build-context.outputs.n8n_version }}
+            N8N_RELEASE_TYPE=${{ needs.determine-build-context.outputs.release_type }}
+          platforms: ${{ matrix.docker_platform }}
+          provenance: false
+          sbom: false
+          load: true
+          push: false
+          tags: ${{ steps.determine-tags.outputs.runners_distroless_tags }}
+
+      - name: Validate Aliyun ACR variables
+        if: needs.determine-build-context.outputs.push_enabled == 'true'
+        run: |
+          test -n "${ACR_REGISTRY:-}" || { echo "::error::Missing ACR_REGISTRY from Infisical"; exit 1; }
+          test -n "${ACR_NAMESPACE:-}" || { echo "::error::Missing ACR_NAMESPACE from Infisical"; exit 1; }
+          test -n "${ACR_USERNAME:-}" || { echo "::error::Missing ACR_USERNAME from Infisical"; exit 1; }
+          test -n "${ACR_PASSWORD:-}" || { echo "::error::Missing ACR_PASSWORD from Infisical"; exit 1; }
 
       - name: Login to Docker registries
         if: needs.determine-build-context.outputs.push_enabled == 'true'
@@ -146,54 +198,23 @@ jobs:
           username: ${{ env.ACR_USERNAME }}
           password: ${{ env.ACR_PASSWORD }}
 
-      - name: Build and push n8n Docker image
-        id: build-n8n
-        uses: docker/build-push-action@d08e5c354a6adb9ed34480a06d141179aa583294 # v7.0.0
-        with:
-          context: .
-          file: ./docker/images/n8n/Dockerfile
-          build-args: |
-            NODE_VERSION=${{ env.NODE_VERSION }}
-            N8N_VERSION=${{ needs.determine-build-context.outputs.n8n_version }}
-            N8N_RELEASE_TYPE=${{ needs.determine-build-context.outputs.release_type }}
-          platforms: ${{ matrix.docker_platform }}
-          # Explicitly disable attestations; some registries (e.g. Aliyun ACR) return "unknown: blob type invalid"
-          provenance: false
-          sbom: false
-          push: ${{ needs.determine-build-context.outputs.push_enabled == 'true' }}
-          tags: ${{ steps.determine-tags.outputs.n8n_tags }}
-
-      - name: Build and push task runners Docker image (Alpine)
-        id: build-runners
-        uses: docker/build-push-action@d08e5c354a6adb9ed34480a06d141179aa583294 # v7.0.0
-        with:
-          context: .
-          file: ./docker/images/runners/Dockerfile
-          build-args: |
-            NODE_VERSION=${{ env.NODE_VERSION }}
-            N8N_VERSION=${{ needs.determine-build-context.outputs.n8n_version }}
-            N8N_RELEASE_TYPE=${{ needs.determine-build-context.outputs.release_type }}
-          platforms: ${{ matrix.docker_platform }}
-          provenance: false
-          sbom: false
-          push: ${{ needs.determine-build-context.outputs.push_enabled == 'true' }}
-          tags: ${{ steps.determine-tags.outputs.runners_tags }}
-
-      - name: Build and push task runners Docker image (distroless)
-        id: build-runners-distroless
-        uses: docker/build-push-action@d08e5c354a6adb9ed34480a06d141179aa583294 # v7.0.0
-        with:
-          context: .
-          file: ./docker/images/runners/Dockerfile.distroless
-          build-args: |
-            NODE_VERSION=${{ env.NODE_VERSION }}
-            N8N_VERSION=${{ needs.determine-build-context.outputs.n8n_version }}
-            N8N_RELEASE_TYPE=${{ needs.determine-build-context.outputs.release_type }}
-          platforms: ${{ matrix.docker_platform }}
-          provenance: false
-          sbom: false
-          push: ${{ needs.determine-build-context.outputs.push_enabled == 'true' }}
-          tags: ${{ steps.determine-tags.outputs.runners_distroless_tags }}
+      - name: Push loaded images to registries
+        if: needs.determine-build-context.outputs.push_enabled == 'true'
+        run: |
+          set -euo pipefail
+          push_tags_from_csv() {
+            local csv="$1"
+            [[ -n "$csv" ]] || { echo "::error::empty tag list"; exit 1; }
+            IFS=',' read -ra TAGS <<< "$csv"
+            for t in "${TAGS[@]}"; do
+              t=$(echo "$t" | xargs)
+              [[ -n "$t" ]] || continue
+              docker push "$t"
+            done
+          }
+          push_tags_from_csv "${{ steps.determine-tags.outputs.n8n_tags }}"
+          push_tags_from_csv "${{ steps.determine-tags.outputs.runners_tags }}"
+          push_tags_from_csv "${{ steps.determine-tags.outputs.runners_distroless_tags }}"
 
   create_multi_arch_manifest:
     name: Create Multi-Arch Manifest
