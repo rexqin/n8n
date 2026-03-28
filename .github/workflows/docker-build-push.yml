@@ -12,8 +12,6 @@ env:
 permissions:
   contents: read
   id-token: write
-  # BuildKit cache export to the Actions cache (cache-to type=gha) requires this permission.
-  actions: write
 
 on:
   schedule:
@@ -164,9 +162,6 @@ jobs:
           sbom: false
           push: ${{ needs.determine-build-context.outputs.push_enabled == 'true' }}
           tags: ${{ steps.determine-tags.outputs.n8n_tags }}
-          # GHA cache: separate scope per image + CPU arch (matrix.platform = amd64 | arm64)
-          cache-from: type=gha,scope=n8n-${{ matrix.platform }}
-          cache-to: type=gha,mode=max,scope=n8n-${{ matrix.platform }}
 
       - name: Build and push task runners Docker image (Alpine)
         id: build-runners
@@ -183,8 +178,6 @@ jobs:
           sbom: false
           push: ${{ needs.determine-build-context.outputs.push_enabled == 'true' }}
           tags: ${{ steps.determine-tags.outputs.runners_tags }}
-          cache-from: type=gha,scope=runners-${{ matrix.platform }}
-          cache-to: type=gha,mode=max,scope=runners-${{ matrix.platform }}
 
       - name: Build and push task runners Docker image (distroless)
         id: build-runners-distroless
@@ -201,8 +194,6 @@ jobs:
           sbom: false
           push: ${{ needs.determine-build-context.outputs.push_enabled == 'true' }}
           tags: ${{ steps.determine-tags.outputs.runners_distroless_tags }}
-          cache-from: type=gha,scope=runners-distroless-${{ matrix.platform }}
-          cache-to: type=gha,mode=max,scope=runners-distroless-${{ matrix.platform }}
 
   create_multi_arch_manifest:
     name: Create Multi-Arch Manifest
