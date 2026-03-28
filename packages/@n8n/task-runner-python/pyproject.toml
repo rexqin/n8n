@@ -6,7 +6,7 @@ readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
     "playwright>=1.55.0",
-    "pydoll-python>=2.22.0",
+    "pydoll-python>=2.21.0",
     "websockets>=14,<15",
 ]
 
