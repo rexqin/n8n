@@ -20,7 +20,13 @@ import { writeGithubOutput } from './github-helpers.mjs';
 
 const exec = promisify(child_process.exec);
 
-const packages = JSON.parse((await exec('pnpm ls -r --only-projects --json')).stdout);
+/** Large monorepos exceed child_process.exec default maxBuffer (1 MiB). */
+const EXEC_MAX_BUFFER_BYTES = 64 * 1024 * 1024;
+
+const { stdout } = await exec('pnpm ls -r --only-projects --json', {
+	maxBuffer: EXEC_MAX_BUFFER_BYTES,
+});
+const packages = JSON.parse(stdout);
 
 const newPackages = [];
 
