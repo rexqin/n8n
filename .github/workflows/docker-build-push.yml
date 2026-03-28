@@ -113,20 +113,6 @@ jobs:
           RELEASE: ${{ needs.determine-build-context.outputs.n8n_version }}
           SENTRY_AUTH_TOKEN: ${{ env.SENTRY_AUTH_TOKEN }}
 
-      - name: Determine Docker tags for all images
-        id: determine-tags
-        run: |
-          node .github/scripts/docker/docker-tags.mjs \
-            --all \
-            --version "${{ needs.determine-build-context.outputs.n8n_version }}" \
-            --platform "${{ matrix.docker_platform }}" \
-            ${{ needs.determine-build-context.outputs.push_to_docker == 'true' && '--include-docker' || '' }}
-
-          echo "=== Generated Docker Tags ==="
-          cat "$GITHUB_OUTPUT" | grep "_tags=" | while IFS='=' read -r key value; do
-            echo "${key}: ${value%%,*}..."  # Show first tag for brevity
-          done
-
       - name: Validate Aliyun ACR variables
         if: needs.determine-build-context.outputs.push_enabled == 'true'
         run: |
@@ -135,25 +121,20 @@ jobs:
           test -n "${ACR_USERNAME:-}" || { echo "::error::Missing ACR_USERNAME from Infisical"; exit 1; }
           test -n "${ACR_PASSWORD:-}" || { echo "::error::Missing ACR_PASSWORD from Infisical"; exit 1; }
 
-      - name: Build Aliyun tags for all images
-        id: aliyun-tags
-        if: needs.determine-build-context.outputs.push_enabled == 'true'
+      - name: Determine Docker tags for all images
+        id: determine-tags
         run: |
-          set -euo pipefail
+          node .github/scripts/docker/docker-tags.mjs \
+            --all \
+            --version "${{ needs.determine-build-context.outputs.n8n_version }}" \
+            --platform "${{ matrix.docker_platform }}" \
+            ${{ needs.determine-build-context.outputs.push_to_docker == 'true' && '--include-docker' || '' }} \
+            ${{ needs.determine-build-context.outputs.push_enabled == 'true' && '--include-aliyun' || '' }}
 
-          convert_tags() {
-            local source_tags="$1"
-            echo "$source_tags" \
-              | tr ',' '\n' \
-              | sed "s#^ghcr.io/${{ github.repository_owner }}/#${ACR_REGISTRY}/${ACR_NAMESPACE}/#" \
-              | paste -sd ',' -
-          }
-
-          {
-            echo "n8n_tags=$(convert_tags "${{ steps.determine-tags.outputs.n8n_tags }}")"
-            echo "runners_tags=$(convert_tags "${{ steps.determine-tags.outputs.runners_tags }}")"
-            echo "runners_distroless_tags=$(convert_tags "${{ steps.determine-tags.outputs.runners_distroless_tags }}")"
-          } >> "$GITHUB_OUTPUT"
+          echo "=== Generated Docker Tags ==="
+          cat "$GITHUB_OUTPUT" | grep "_tags=" | while IFS='=' read -r key value; do
+            echo "${key}: ${value%%,*}..."  # Show first tag for brevity
+          done
 
       - name: Login to Docker registries
         if: needs.determine-build-context.outputs.push_enabled == 'true'
@@ -187,7 +168,7 @@ jobs:
           # SBOM attestations can cause "unknown: blob type invalid" on some registries (e.g. GHCR/ACR)
           sbom: false
           push: ${{ needs.determine-build-context.outputs.push_enabled == 'true' }}
-          tags: ${{ steps.determine-tags.outputs.n8n_tags }}${{ steps.aliyun-tags.outputs.n8n_tags && format(',{0}', steps.aliyun-tags.outputs.n8n_tags) || '' }}
+          tags: ${{ steps.determine-tags.outputs.n8n_tags }}
 
       - name: Build and push task runners Docker image (Alpine)
         id: build-runners
@@ -203,7 +184,7 @@ jobs:
           provenance: false # Disabled - using SLSA L3 generator for isolated provenance
           sbom: false
           push: ${{ needs.determine-build-context.outputs.push_enabled == 'true' }}
-          tags: ${{ steps.determine-tags.outputs.runners_tags }},${{ steps.aliyun-tags.outputs.runners_tags }}
+          tags: ${{ steps.determine-tags.outputs.runners_tags }}
 
       - name: Build and push task runners Docker image (distroless)
         id: build-runners-distroless
@@ -219,7 +200,7 @@ jobs:
           provenance: false # Disabled - using SLSA L3 generator for isolated provenance
           sbom: false
           push: ${{ needs.determine-build-context.outputs.push_enabled == 'true' }}
-          tags: ${{ steps.determine-tags.outputs.runners_distroless_tags }},${{ steps.aliyun-tags.outputs.runners_distroless_tags }}
+          tags: ${{ steps.determine-tags.outputs.runners_distroless_tags }}
 
   create_multi_arch_manifest:
     name: Create Multi-Arch Manifest
