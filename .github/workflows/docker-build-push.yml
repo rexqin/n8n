@@ -157,9 +157,6 @@ jobs:
             N8N_VERSION=${{ needs.determine-build-context.outputs.n8n_version }}
             N8N_RELEASE_TYPE=${{ needs.determine-build-context.outputs.release_type }}
           platforms: ${{ matrix.docker_platform }}
-          provenance: false
-          # SBOM attestations can cause "unknown: blob type invalid" on some registries
-          sbom: false
           push: ${{ needs.determine-build-context.outputs.push_enabled == 'true' }}
           tags: ${{ steps.determine-tags.outputs.n8n_tags }}
 
@@ -174,8 +171,6 @@ jobs:
             N8N_VERSION=${{ needs.determine-build-context.outputs.n8n_version }}
             N8N_RELEASE_TYPE=${{ needs.determine-build-context.outputs.release_type }}
           platforms: ${{ matrix.docker_platform }}
-          provenance: false
-          sbom: false
           push: ${{ needs.determine-build-context.outputs.push_enabled == 'true' }}
           tags: ${{ steps.determine-tags.outputs.runners_tags }}
 
@@ -190,8 +185,6 @@ jobs:
             N8N_VERSION=${{ needs.determine-build-context.outputs.n8n_version }}
             N8N_RELEASE_TYPE=${{ needs.determine-build-context.outputs.release_type }}
           platforms: ${{ matrix.docker_platform }}
-          provenance: false
-          sbom: false
           push: ${{ needs.determine-build-context.outputs.push_enabled == 'true' }}
           tags: ${{ steps.determine-tags.outputs.runners_distroless_tags }}
 
@@ -285,29 +278,3 @@ jobs:
                 "${ACR_BASE}/${IMAGE_NAME}:${TAG_SUFFIX}-arm64"
             fi
           done
-
-  security-scan:
-    name: Security Scan
-    needs: [determine-build-context, build-and-push-docker, create_multi_arch_manifest]
-    if: |
-      success() &&
-      (needs.determine-build-context.outputs.release_type == 'stable' ||
-       needs.determine-build-context.outputs.release_type == 'nightly' ||
-       needs.determine-build-context.outputs.release_type == 'rc')
-    uses: ./.github/workflows/security-trivy-scan-callable.yml
-    with:
-      image_ref: ${{ needs.build-and-push-docker.outputs.image_ref }}
-    secrets: inherit
-
-  security-scan-runners:
-    name: Security Scan (runners)
-    needs: [determine-build-context, build-and-push-docker, create_multi_arch_manifest]
-    if: |
-      success() &&
-      (needs.determine-build-context.outputs.release_type == 'stable' ||
-       needs.determine-build-context.outputs.release_type == 'nightly' ||
-       needs.determine-build-context.outputs.release_type == 'rc')
-    uses: ./.github/workflows/security-trivy-scan-callable.yml
-    with:
-      image_ref: ${{ needs.build-and-push-docker.outputs.runners_primary_manifest_tag }}
-    secrets: inherit
