@@ -82,6 +82,8 @@ jobs:
           pnpm publish -r --filter '!n8n' --no-git-checks --dry-run
 
       - name: Pre publishing changes
+        env:
+          NODE_OPTIONS: '--max-old-space-size=6144'
         run: |
           node .github/scripts/trim-fe-packageJson.js
           node .github/scripts/ensure-provenance-fields.mjs
