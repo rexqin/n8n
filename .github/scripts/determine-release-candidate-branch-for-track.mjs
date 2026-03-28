@@ -27,6 +27,7 @@ function main() {
 	const commitList = listCommitsBetweenRefs(releaseCandidateBranch, currentTag.tag)
 		.split('\n')
 		.filter((commit) => commit.trim().length > 0);
+	console.log('Commit list: ', commitList);
 	const actionableCommitList = filterActionableCommits(commitList);
 
 	const output = {
