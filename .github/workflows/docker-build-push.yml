@@ -12,8 +12,6 @@ env:
 permissions:
   contents: read
   id-token: write
-  # Docker Buildx GHA cache backend (cache-to type=gha) needs write access to the Actions cache API
-  actions: write
 
 on:
   schedule:
@@ -162,13 +160,8 @@ jobs:
           # Explicitly disable attestations; some registries (e.g. Aliyun ACR) return "unknown: blob type invalid"
           provenance: false
           sbom: false
-          # push: ${{ needs.determine-build-context.outputs.push_enabled == 'true' }}
-          push: false
-          load: true
+          push: ${{ needs.determine-build-context.outputs.push_enabled == 'true' }}
           tags: ${{ steps.determine-tags.outputs.n8n_tags }}
-          # GHA cache: per-image + per-CPU scope (matrix.platform = amd64 | arm64)
-          cache-from: type=gha,scope=n8n-${{ matrix.platform }}
-          cache-to: type=gha,mode=max,scope=n8n-${{ matrix.platform }}
 
       - name: Build and push task runners Docker image (Alpine)
         id: build-runners
@@ -185,8 +178,6 @@ jobs:
           sbom: false
           push: ${{ needs.determine-build-context.outputs.push_enabled == 'true' }}
           tags: ${{ steps.determine-tags.outputs.runners_tags }}
-          cache-from: type=gha,scope=runners-${{ matrix.platform }}
-          cache-to: type=gha,mode=max,scope=runners-${{ matrix.platform }}
 
       - name: Build and push task runners Docker image (distroless)
         id: build-runners-distroless
@@ -203,96 +194,94 @@ jobs:
           sbom: false
           push: ${{ needs.determine-build-context.outputs.push_enabled == 'true' }}
           tags: ${{ steps.determine-tags.outputs.runners_distroless_tags }}
-          cache-from: type=gha,scope=runners-distroless-${{ matrix.platform }}
-          cache-to: type=gha,mode=max,scope=runners-distroless-${{ matrix.platform }}
 
-  create_multi_arch_manifest:
-    name: Create Multi-Arch Manifest
-    needs: [determine-build-context, build-and-push-docker]
-    runs-on: ubuntu-latest
-    if: |
-      needs.build-and-push-docker.result == 'success' &&
-      needs.determine-build-context.outputs.push_enabled == 'true'
-    steps:
-      - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+  # create_multi_arch_manifest:
+  #   name: Create Multi-Arch Manifest
+  #   needs: [determine-build-context, build-and-push-docker]
+  #   runs-on: ubuntu-latest
+  #   if: |
+  #     needs.build-and-push-docker.result == 'success' &&
+  #     needs.determine-build-context.outputs.push_enabled == 'true'
+  #   steps:
+  #     - name: Checkout
+  #       uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
-      - name: Fetch secrets from Infisical
-        uses: Infisical/secrets-action@v1.0.15
-        with:
-          method: oidc
-          identity-id: 436a2630-fad8-475b-8f00-5ab158e9919e
-          project-slug: project-nd-zj
-          env-slug: dev
-          secret-path: /n8n
+  #     - name: Fetch secrets from Infisical
+  #       uses: Infisical/secrets-action@v1.0.15
+  #       with:
+  #         method: oidc
+  #         identity-id: 436a2630-fad8-475b-8f00-5ab158e9919e
+  #         project-slug: project-nd-zj
+  #         env-slug: dev
+  #         secret-path: /n8n
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd # v4.0.0
+  #     - name: Set up Docker Buildx
+  #       uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd # v4.0.0
 
-      - name: Login to Docker registries
-        uses: ./.github/actions/docker-registry-login
-        with:
-          login-ghcr: false
-          login-dockerhub: ${{ needs.determine-build-context.outputs.push_to_docker == 'true' }}
-          dockerhub-username: ${{ env.DOCKER_USERNAME }}
-          dockerhub-password: ${{ env.DOCKER_PASSWORD }}
+  #     - name: Login to Docker registries
+  #       uses: ./.github/actions/docker-registry-login
+  #       with:
+  #         login-ghcr: false
+  #         login-dockerhub: ${{ needs.determine-build-context.outputs.push_to_docker == 'true' }}
+  #         dockerhub-username: ${{ env.DOCKER_USERNAME }}
+  #         dockerhub-password: ${{ env.DOCKER_PASSWORD }}
 
-      - name: Login to Aliyun ACR
-        uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # v4.0.0
-        with:
-          registry: ${{ env.ACR_REGISTRY }}
-          username: ${{ env.ACR_USERNAME }}
-          password: ${{ env.ACR_PASSWORD }}
+  #     - name: Login to Aliyun ACR
+  #       uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # v4.0.0
+  #       with:
+  #         registry: ${{ env.ACR_REGISTRY }}
+  #         username: ${{ env.ACR_USERNAME }}
+  #         password: ${{ env.ACR_PASSWORD }}
 
-      - name: Create Docker Hub manifests
-        if: needs.determine-build-context.outputs.push_to_docker == 'true'
-        run: |
-          VERSION="${{ needs.determine-build-context.outputs.n8n_version }}"
-          DOCKER_BASE="${{ env.DOCKER_USERNAME }}"
+  #     - name: Create Docker Hub manifests
+  #       if: needs.determine-build-context.outputs.push_to_docker == 'true'
+  #       run: |
+  #         VERSION="${{ needs.determine-build-context.outputs.n8n_version }}"
+  #         DOCKER_BASE="${{ env.DOCKER_USERNAME }}"
 
-          # Create manifests for each image type
-          declare -A images=(
-            ["n8n"]="${VERSION}"
-            ["runners"]="${VERSION}"
-            ["runners-distroless"]="${VERSION}-distroless"
-          )
+  #         # Create manifests for each image type
+  #         declare -A images=(
+  #           ["n8n"]="${VERSION}"
+  #           ["runners"]="${VERSION}"
+  #           ["runners-distroless"]="${VERSION}-distroless"
+  #         )
 
-          for image in "${!images[@]}"; do
-            TAG_SUFFIX="${images[$image]}"
-            IMAGE_NAME="${image//-distroless/}"  # Remove -distroless from image name
+  #         for image in "${!images[@]}"; do
+  #           TAG_SUFFIX="${images[$image]}"
+  #           IMAGE_NAME="${image//-distroless/}"  # Remove -distroless from image name
 
-            echo "Creating Docker Hub manifest for $image"
-            docker buildx imagetools create \
-              --tag "${DOCKER_BASE}/${IMAGE_NAME}:${TAG_SUFFIX}" \
-              "${DOCKER_BASE}/${IMAGE_NAME}:${TAG_SUFFIX}-amd64" \
-              "${DOCKER_BASE}/${IMAGE_NAME}:${TAG_SUFFIX}-arm64"
-          done
+  #           echo "Creating Docker Hub manifest for $image"
+  #           docker buildx imagetools create \
+  #             --tag "${DOCKER_BASE}/${IMAGE_NAME}:${TAG_SUFFIX}" \
+  #             "${DOCKER_BASE}/${IMAGE_NAME}:${TAG_SUFFIX}-amd64" \
+  #             "${DOCKER_BASE}/${IMAGE_NAME}:${TAG_SUFFIX}-arm64"
+  #         done
 
-      - name: Create Aliyun ACR manifests
-        run: |
-          VERSION="${{ needs.determine-build-context.outputs.n8n_version }}"
-          ACR_BASE="${{ env.ACR_REGISTRY }}/${{ env.ACR_NAMESPACE }}"
-          RELEASE_TYPE="${{ needs.determine-build-context.outputs.release_type }}"
+  #     - name: Create Aliyun ACR manifests
+  #       run: |
+  #         VERSION="${{ needs.determine-build-context.outputs.n8n_version }}"
+  #         ACR_BASE="${{ env.ACR_REGISTRY }}/${{ env.ACR_NAMESPACE }}"
+  #         RELEASE_TYPE="${{ needs.determine-build-context.outputs.release_type }}"
 
-          declare -A images=(
-            ["n8n"]="${VERSION}"
-            ["runners"]="${VERSION}"
-            ["runners-distroless"]="${VERSION}-distroless"
-          )
+  #         declare -A images=(
+  #           ["n8n"]="${VERSION}"
+  #           ["runners"]="${VERSION}"
+  #           ["runners-distroless"]="${VERSION}-distroless"
+  #         )
 
-          for image in "${!images[@]}"; do
-            TAG_SUFFIX="${images[$image]}"
-            IMAGE_NAME="${image//-distroless/}"  # Remove -distroless from image name
+  #         for image in "${!images[@]}"; do
+  #           TAG_SUFFIX="${images[$image]}"
+  #           IMAGE_NAME="${image//-distroless/}"  # Remove -distroless from image name
 
-            echo "Creating Aliyun ACR manifest for $image"
-            if [[ "$RELEASE_TYPE" == "branch" ]]; then
-              docker buildx imagetools create \
-                --tag "${ACR_BASE}/${IMAGE_NAME}:${TAG_SUFFIX}" \
-                "${ACR_BASE}/${IMAGE_NAME}:${TAG_SUFFIX}-amd64"
-            else
-              docker buildx imagetools create \
-                --tag "${ACR_BASE}/${IMAGE_NAME}:${TAG_SUFFIX}" \
-                "${ACR_BASE}/${IMAGE_NAME}:${TAG_SUFFIX}-amd64" \
-                "${ACR_BASE}/${IMAGE_NAME}:${TAG_SUFFIX}-arm64"
-            fi
-          done
+  #           echo "Creating Aliyun ACR manifest for $image"
+  #           if [[ "$RELEASE_TYPE" == "branch" ]]; then
+  #             docker buildx imagetools create \
+  #               --tag "${ACR_BASE}/${IMAGE_NAME}:${TAG_SUFFIX}" \
+  #               "${ACR_BASE}/${IMAGE_NAME}:${TAG_SUFFIX}-amd64"
+  #           else
+  #             docker buildx imagetools create \
+  #               --tag "${ACR_BASE}/${IMAGE_NAME}:${TAG_SUFFIX}" \
+  #               "${ACR_BASE}/${IMAGE_NAME}:${TAG_SUFFIX}-amd64" \
+  #               "${ACR_BASE}/${IMAGE_NAME}:${TAG_SUFFIX}-arm64"
+  #           fi
+  #         done
