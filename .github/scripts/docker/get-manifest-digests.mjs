@@ -3,7 +3,7 @@
  * Extracts manifest digests and image names for SLSA provenance and VEX attestation.
  *
  * Usage:
- *   N8N_TAG=ghcr.io/n8n-io/n8n:1.0.0 node get-manifest-digests.mjs
+ *   N8N_TAG=n8nio/n8n:1.0.0 node get-manifest-digests.mjs
  *
  * Environment variables:
  *   N8N_TAG              - Full image reference for n8n image

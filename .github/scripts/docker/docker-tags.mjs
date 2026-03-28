@@ -4,7 +4,6 @@ import { appendFileSync } from 'node:fs';
 
 class TagGenerator {
 	constructor() {
-		this.githubOwner = process.env.GITHUB_REPOSITORY_OWNER || 'n8n-io';
 		this.dockerUsername = process.env.DOCKER_USERNAME || 'n8nio';
 		this.acrRegistry = process.env.ACR_REGISTRY || '';
 		this.acrNamespace = process.env.ACR_NAMESPACE || '';
@@ -29,22 +28,21 @@ class TagGenerator {
 				: [];
 
 		const tags = {
-			ghcr: [`ghcr.io/${this.githubOwner}/${imageName}:${fullVersion}`],
 			docker: includeDockerHub ? [`${this.dockerUsername}/${imageName}:${fullVersion}`] : [],
 			aliyun,
 		};
 
-		tags.all = [...tags.ghcr, ...tags.docker, ...tags.aliyun];
+		tags.all = [...tags.docker, ...tags.aliyun];
 		return tags;
 	}
 
 	output(tags, prefix = '') {
 		if (this.githubOutput) {
 			const prefixStr = prefix ? `${prefix}_` : '';
-			const primaryTag = tags.ghcr[0] ? tags.ghcr[0].replace(/-amd64$|-arm64$/, '') : '';
+			const primarySource = tags.docker[0] || tags.aliyun[0] || '';
+			const primaryTag = primarySource ? primarySource.replace(/-amd64$|-arm64$/, '') : '';
 			const outputs = [
 				`${prefixStr}tags=${tags.all.join(',')}`,
-				`${prefixStr}ghcr_tag=${tags.ghcr[0] || ''}`,
 				`${prefixStr}docker_tag=${tags.docker[0] || ''}`,
 				`${prefixStr}aliyun_tag=${tags.aliyun[0] || ''}`,
 				`${prefixStr}primary_tag=${primaryTag}`,

@@ -86,9 +86,9 @@ jobs:
       matrix: ${{ fromJSON(needs.determine-build-context.outputs.build_matrix) }}
     outputs:
       image_ref: ${{ steps.determine-tags.outputs.n8n_primary_tag }}
-      primary_ghcr_manifest_tag: ${{ steps.determine-tags.outputs.n8n_primary_tag }}
-      runners_primary_ghcr_manifest_tag: ${{ steps.determine-tags.outputs.runners_primary_tag }}
-      runners_distroless_primary_ghcr_manifest_tag: ${{ steps.determine-tags.outputs.runners_distroless_primary_tag }}
+      primary_manifest_tag: ${{ steps.determine-tags.outputs.n8n_primary_tag }}
+      runners_primary_manifest_tag: ${{ steps.determine-tags.outputs.runners_primary_tag }}
+      runners_distroless_primary_manifest_tag: ${{ steps.determine-tags.outputs.runners_distroless_primary_tag }}
     steps:
       - name: Checkout code
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -140,7 +140,7 @@ jobs:
         if: needs.determine-build-context.outputs.push_enabled == 'true'
         uses: ./.github/actions/docker-registry-login
         with:
-          login-ghcr: true
+          login-ghcr: false
           login-dockerhub: ${{ needs.determine-build-context.outputs.push_to_docker == 'true' }}
           dockerhub-username: ${{ env.DOCKER_USERNAME }}
           dockerhub-password: ${{ env.DOCKER_PASSWORD }}
@@ -235,7 +235,7 @@ jobs:
       - name: Login to Docker registries
         uses: ./.github/actions/docker-registry-login
         with:
-          login-ghcr: true
+          login-ghcr: false
           login-dockerhub: ${{ needs.determine-build-context.outputs.push_to_docker == 'true' }}
           dockerhub-username: ${{ env.DOCKER_USERNAME }}
           dockerhub-password: ${{ env.DOCKER_PASSWORD }}
@@ -246,40 +246,6 @@ jobs:
           registry: ${{ env.ACR_REGISTRY }}
           username: ${{ env.ACR_USERNAME }}
           password: ${{ env.ACR_PASSWORD }}
-
-      - name: Create GHCR multi-arch manifests
-        run: |
-          RELEASE_TYPE="${{ needs.determine-build-context.outputs.release_type }}"
-
-          # Function to create manifest for an image
-          create_manifest() {
-            local IMAGE_NAME=$1
-            local MANIFEST_TAG=$2
-
-            if [[ -z "$MANIFEST_TAG" ]]; then
-              echo "Skipping $IMAGE_NAME - no manifest tag"
-              return
-            fi
-
-            echo "Creating GHCR manifest for $IMAGE_NAME: $MANIFEST_TAG"
-
-            # For branch builds, only AMD64 is built
-            if [[ "$RELEASE_TYPE" == "branch" ]]; then
-              docker buildx imagetools create \
-                --tag "$MANIFEST_TAG" \
-                "${MANIFEST_TAG}-amd64"
-            else
-              docker buildx imagetools create \
-                --tag "$MANIFEST_TAG" \
-                "${MANIFEST_TAG}-amd64" \
-                "${MANIFEST_TAG}-arm64"
-            fi
-          }
-
-          # Create manifests for all images
-          create_manifest "n8n" "${{ needs.build-and-push-docker.outputs.primary_ghcr_manifest_tag }}"
-          create_manifest "runners" "${{ needs.build-and-push-docker.outputs.runners_primary_ghcr_manifest_tag }}"
-          create_manifest "runners-distroless" "${{ needs.build-and-push-docker.outputs.runners_distroless_primary_ghcr_manifest_tag }}"
 
       - name: Create Docker Hub manifests
         if: needs.determine-build-context.outputs.push_to_docker == 'true'
@@ -337,9 +303,9 @@ jobs:
       - name: Get manifest digests for attestation
         id: get-digests
         env:
-          N8N_TAG: ${{ needs.build-and-push-docker.outputs.primary_ghcr_manifest_tag }}
-          RUNNERS_TAG: ${{ needs.build-and-push-docker.outputs.runners_primary_ghcr_manifest_tag }}
-          DISTROLESS_TAG: ${{ needs.build-and-push-docker.outputs.runners_distroless_primary_ghcr_manifest_tag }}
+          N8N_TAG: ${{ needs.build-and-push-docker.outputs.primary_manifest_tag }}
+          RUNNERS_TAG: ${{ needs.build-and-push-docker.outputs.runners_primary_manifest_tag }}
+          DISTROLESS_TAG: ${{ needs.build-and-push-docker.outputs.runners_distroless_primary_manifest_tag }}
         run: node .github/scripts/docker/get-manifest-digests.mjs
 
   call-success-url:
@@ -363,7 +329,8 @@ jobs:
     needs: [determine-build-context, build-and-push-docker, create_multi_arch_manifest]
     if: |
       needs.create_multi_arch_manifest.result == 'success' &&
-      needs.create_multi_arch_manifest.outputs.n8n_digest != ''
+      needs.create_multi_arch_manifest.outputs.n8n_digest != '' &&
+      needs.determine-build-context.outputs.push_to_docker == 'true'
     permissions:
       id-token: write
       packages: write
@@ -372,16 +339,17 @@ jobs:
     with:
       image: ${{ needs.create_multi_arch_manifest.outputs.n8n_image }}
       digest: ${{ needs.create_multi_arch_manifest.outputs.n8n_digest }}
-      registry-username: ${{ github.actor }}
     secrets:
-      registry-password: ${{ secrets.GITHUB_TOKEN }}
+      registry-username: ${{ secrets.DOCKER_USERNAME }}
+      registry-password: ${{ secrets.DOCKER_PASSWORD }}
 
   provenance-runners:
     name: SLSA Provenance (runners)
     needs: [determine-build-context, build-and-push-docker, create_multi_arch_manifest]
     if: |
       needs.create_multi_arch_manifest.result == 'success' &&
-      needs.create_multi_arch_manifest.outputs.runners_digest != ''
+      needs.create_multi_arch_manifest.outputs.runners_digest != '' &&
+      needs.determine-build-context.outputs.push_to_docker == 'true'
     permissions:
       id-token: write
       packages: write
@@ -390,16 +358,17 @@ jobs:
     with:
       image: ${{ needs.create_multi_arch_manifest.outputs.runners_image }}
       digest: ${{ needs.create_multi_arch_manifest.outputs.runners_digest }}
-      registry-username: ${{ github.actor }}
     secrets:
-      registry-password: ${{ secrets.GITHUB_TOKEN }}
+      registry-username: ${{ secrets.DOCKER_USERNAME }}
+      registry-password: ${{ secrets.DOCKER_PASSWORD }}
 
   provenance-runners-distroless:
     name: SLSA Provenance (runners-distroless)
     needs: [determine-build-context, build-and-push-docker, create_multi_arch_manifest]
     if: |
       needs.create_multi_arch_manifest.result == 'success' &&
-      needs.create_multi_arch_manifest.outputs.runners_distroless_digest != ''
+      needs.create_multi_arch_manifest.outputs.runners_distroless_digest != '' &&
+      needs.determine-build-context.outputs.push_to_docker == 'true'
     permissions:
       id-token: write
       packages: write
@@ -408,9 +377,9 @@ jobs:
     with:
       image: ${{ needs.create_multi_arch_manifest.outputs.runners_distroless_image }}
       digest: ${{ needs.create_multi_arch_manifest.outputs.runners_distroless_digest }}
-      registry-username: ${{ github.actor }}
     secrets:
-      registry-password: ${{ secrets.GITHUB_TOKEN }}
+      registry-username: ${{ secrets.DOCKER_USERNAME }}
+      registry-password: ${{ secrets.DOCKER_PASSWORD }}
 
   # VEX Attestation - Documents which CVEs affect us (security/vex.openvex.json)
   vex-attestation:
@@ -420,13 +389,11 @@ jobs:
         determine-build-context,
         build-and-push-docker,
         create_multi_arch_manifest,
-        provenance-n8n,
-        provenance-runners,
-        provenance-runners-distroless,
       ]
     if: |
       always() &&
       needs.create_multi_arch_manifest.result == 'success' &&
+      needs.determine-build-context.outputs.push_to_docker == 'true' &&
       (needs.determine-build-context.outputs.release_type == 'stable' ||
        needs.determine-build-context.outputs.release_type == 'rc' ||
        needs.determine-build-context.outputs.release_type == 'nightly')
@@ -441,12 +408,11 @@ jobs:
       - name: Install Cosign
         uses: sigstore/cosign-installer@7e8b541eb2e61bf99390e1afd4be13a184e9ebc5 # v3.10.1
 
-      - name: Login to GHCR
+      - name: Login to Docker Hub
         uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # v4.0.0
         with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
 
       - name: Attest VEX to n8n image
         if: needs.create_multi_arch_manifest.outputs.n8n_digest != ''
@@ -495,7 +461,7 @@ jobs:
        needs.determine-build-context.outputs.release_type == 'rc')
     uses: ./.github/workflows/security-trivy-scan-callable.yml
     with:
-      image_ref: ${{ needs.build-and-push-docker.outputs.runners_primary_ghcr_manifest_tag }}
+      image_ref: ${{ needs.build-and-push-docker.outputs.runners_primary_manifest_tag }}
     secrets: inherit
 
   notify-on-failure:
