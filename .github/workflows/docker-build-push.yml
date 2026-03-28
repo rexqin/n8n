@@ -12,9 +12,6 @@ env:
 permissions:
   contents: read
   id-token: write
-  packages: write
-  # generator_container_slsa3 nested jobs require actions:read (caller must grant it)
-  actions: read
 
 on:
   schedule:
@@ -44,10 +41,6 @@ on:
         required: false
         type: boolean
         default: true
-      success_url:
-        description: 'URL to call after the build is successful'
-        required: false
-        type: string
 
 jobs:
   determine-build-context:
@@ -164,8 +157,8 @@ jobs:
             N8N_VERSION=${{ needs.determine-build-context.outputs.n8n_version }}
             N8N_RELEASE_TYPE=${{ needs.determine-build-context.outputs.release_type }}
           platforms: ${{ matrix.docker_platform }}
-          provenance: false # Disabled - using SLSA L3 generator for isolated provenance
-          # SBOM attestations can cause "unknown: blob type invalid" on some registries (e.g. GHCR/ACR)
+          provenance: false
+          # SBOM attestations can cause "unknown: blob type invalid" on some registries
           sbom: false
           push: ${{ needs.determine-build-context.outputs.push_enabled == 'true' }}
           tags: ${{ steps.determine-tags.outputs.n8n_tags }}
@@ -181,7 +174,7 @@ jobs:
             N8N_VERSION=${{ needs.determine-build-context.outputs.n8n_version }}
             N8N_RELEASE_TYPE=${{ needs.determine-build-context.outputs.release_type }}
           platforms: ${{ matrix.docker_platform }}
-          provenance: false # Disabled - using SLSA L3 generator for isolated provenance
+          provenance: false
           sbom: false
           push: ${{ needs.determine-build-context.outputs.push_enabled == 'true' }}
           tags: ${{ steps.determine-tags.outputs.runners_tags }}
@@ -197,7 +190,7 @@ jobs:
             N8N_VERSION=${{ needs.determine-build-context.outputs.n8n_version }}
             N8N_RELEASE_TYPE=${{ needs.determine-build-context.outputs.release_type }}
           platforms: ${{ matrix.docker_platform }}
-          provenance: false # Disabled - using SLSA L3 generator for isolated provenance
+          provenance: false
           sbom: false
           push: ${{ needs.determine-build-context.outputs.push_enabled == 'true' }}
           tags: ${{ steps.determine-tags.outputs.runners_distroless_tags }}
@@ -209,13 +202,6 @@ jobs:
     if: |
       needs.build-and-push-docker.result == 'success' &&
       needs.determine-build-context.outputs.push_enabled == 'true'
-    outputs:
-      n8n_digest: ${{ steps.get-digests.outputs.n8n_digest }}
-      n8n_image: ${{ steps.get-digests.outputs.n8n_image }}
-      runners_digest: ${{ steps.get-digests.outputs.runners_digest }}
-      runners_image: ${{ steps.get-digests.outputs.runners_image }}
-      runners_distroless_digest: ${{ steps.get-digests.outputs.runners_distroless_digest }}
-      runners_distroless_image: ${{ steps.get-digests.outputs.runners_distroless_image }}
     steps:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -300,144 +286,6 @@ jobs:
             fi
           done
 
-      - name: Get manifest digests for attestation
-        id: get-digests
-        env:
-          N8N_TAG: ${{ needs.build-and-push-docker.outputs.primary_manifest_tag }}
-          RUNNERS_TAG: ${{ needs.build-and-push-docker.outputs.runners_primary_manifest_tag }}
-          DISTROLESS_TAG: ${{ needs.build-and-push-docker.outputs.runners_distroless_primary_manifest_tag }}
-        run: node .github/scripts/docker/get-manifest-digests.mjs
-
-  call-success-url:
-    name: Call Success URL
-    needs: [create_multi_arch_manifest]
-    runs-on: ubuntu-latest
-    if: needs.create_multi_arch_manifest.result == 'success' || needs.create_multi_arch_manifest.result == 'skipped'
-    steps:
-      - name: Call Success URL
-        env:
-          SUCCESS_URL: ${{ github.event.inputs.success_url }}
-        if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.success_url != '' }}
-        run: |
-          echo "Calling success URL: ${{ env.SUCCESS_URL }}"
-          curl -v "${{ env.SUCCESS_URL }}" || echo "Failed to call success URL"
-        shell: bash
-
-  # SLSA L3 Provenance - Must use version tags (@vX.Y.Z), NOT SHAs
-  provenance-n8n:
-    name: SLSA Provenance (n8n)
-    needs: [determine-build-context, build-and-push-docker, create_multi_arch_manifest]
-    if: |
-      needs.create_multi_arch_manifest.result == 'success' &&
-      needs.create_multi_arch_manifest.outputs.n8n_digest != '' &&
-      needs.determine-build-context.outputs.push_to_docker == 'true'
-    permissions:
-      id-token: write
-      packages: write
-      actions: read
-    uses: slsa-framework/slsa-github-generator/.github/workflows/generator_container_slsa3.yml@f7dd8c54c2067bafc12ca7a55595d5ee9b75204a
-    with:
-      image: ${{ needs.create_multi_arch_manifest.outputs.n8n_image }}
-      digest: ${{ needs.create_multi_arch_manifest.outputs.n8n_digest }}
-    secrets:
-      registry-username: ${{ secrets.DOCKER_USERNAME }}
-      registry-password: ${{ secrets.DOCKER_PASSWORD }}
-
-  provenance-runners:
-    name: SLSA Provenance (runners)
-    needs: [determine-build-context, build-and-push-docker, create_multi_arch_manifest]
-    if: |
-      needs.create_multi_arch_manifest.result == 'success' &&
-      needs.create_multi_arch_manifest.outputs.runners_digest != '' &&
-      needs.determine-build-context.outputs.push_to_docker == 'true'
-    permissions:
-      id-token: write
-      packages: write
-      actions: read
-    uses: slsa-framework/slsa-github-generator/.github/workflows/generator_container_slsa3.yml@f7dd8c54c2067bafc12ca7a55595d5ee9b75204a
-    with:
-      image: ${{ needs.create_multi_arch_manifest.outputs.runners_image }}
-      digest: ${{ needs.create_multi_arch_manifest.outputs.runners_digest }}
-    secrets:
-      registry-username: ${{ secrets.DOCKER_USERNAME }}
-      registry-password: ${{ secrets.DOCKER_PASSWORD }}
-
-  provenance-runners-distroless:
-    name: SLSA Provenance (runners-distroless)
-    needs: [determine-build-context, build-and-push-docker, create_multi_arch_manifest]
-    if: |
-      needs.create_multi_arch_manifest.result == 'success' &&
-      needs.create_multi_arch_manifest.outputs.runners_distroless_digest != '' &&
-      needs.determine-build-context.outputs.push_to_docker == 'true'
-    permissions:
-      id-token: write
-      packages: write
-      actions: read
-    uses: slsa-framework/slsa-github-generator/.github/workflows/generator_container_slsa3.yml@f7dd8c54c2067bafc12ca7a55595d5ee9b75204a
-    with:
-      image: ${{ needs.create_multi_arch_manifest.outputs.runners_distroless_image }}
-      digest: ${{ needs.create_multi_arch_manifest.outputs.runners_distroless_digest }}
-    secrets:
-      registry-username: ${{ secrets.DOCKER_USERNAME }}
-      registry-password: ${{ secrets.DOCKER_PASSWORD }}
-
-  # VEX Attestation - Documents which CVEs affect us (security/vex.openvex.json)
-  vex-attestation:
-    name: VEX Attestation
-    needs:
-      [
-        determine-build-context,
-        build-and-push-docker,
-        create_multi_arch_manifest,
-      ]
-    if: |
-      always() &&
-      needs.create_multi_arch_manifest.result == 'success' &&
-      needs.determine-build-context.outputs.push_to_docker == 'true' &&
-      (needs.determine-build-context.outputs.release_type == 'stable' ||
-       needs.determine-build-context.outputs.release_type == 'rc' ||
-       needs.determine-build-context.outputs.release_type == 'nightly')
-    runs-on: ubuntu-latest
-    permissions:
-      id-token: write
-      packages: write
-    steps:
-      - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-
-      - name: Install Cosign
-        uses: sigstore/cosign-installer@7e8b541eb2e61bf99390e1afd4be13a184e9ebc5 # v3.10.1
-
-      - name: Login to Docker Hub
-        uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # v4.0.0
-        with:
-          username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
-
-      - name: Attest VEX to n8n image
-        if: needs.create_multi_arch_manifest.outputs.n8n_digest != ''
-        run: |
-          cosign attest --yes \
-            --type openvex \
-            --predicate security/vex.openvex.json \
-            ${{ needs.create_multi_arch_manifest.outputs.n8n_image }}@${{ needs.create_multi_arch_manifest.outputs.n8n_digest }}
-
-      - name: Attest VEX to runners image
-        if: needs.create_multi_arch_manifest.outputs.runners_digest != ''
-        run: |
-          cosign attest --yes \
-            --type openvex \
-            --predicate security/vex.openvex.json \
-            ${{ needs.create_multi_arch_manifest.outputs.runners_image }}@${{ needs.create_multi_arch_manifest.outputs.runners_digest }}
-
-      - name: Attest VEX to runners-distroless image
-        if: needs.create_multi_arch_manifest.outputs.runners_distroless_digest != ''
-        run: |
-          cosign attest --yes \
-            --type openvex \
-            --predicate security/vex.openvex.json \
-            ${{ needs.create_multi_arch_manifest.outputs.runners_distroless_image }}@${{ needs.create_multi_arch_manifest.outputs.runners_distroless_digest }}
-
   security-scan:
     name: Security Scan
     needs: [determine-build-context, build-and-push-docker, create_multi_arch_manifest]
@@ -463,25 +311,3 @@ jobs:
     with:
       image_ref: ${{ needs.build-and-push-docker.outputs.runners_primary_manifest_tag }}
     secrets: inherit
-
-  notify-on-failure:
-    name: Notify Cats on nightly build failure
-    runs-on: ubuntu-latest
-    needs: [build-and-push-docker]
-    if: needs.build-and-push-docker.result == 'failure' && github.event_name == 'schedule'
-    steps:
-      - name: Fetch secrets from Infisical
-        uses: Infisical/secrets-action@v1.0.15
-        with:
-          method: oidc
-          identity-id: 436a2630-fad8-475b-8f00-5ab158e9919e
-          project-slug: project-nd-zj
-          env-slug: dev
-          secret-path: /n8n
-
-      - uses: act10ns/slack@44541246747a30eb3102d87f7a4cc5471b0ffb7d # v2.1.0
-        with:
-          status: ${{ needs.build-and-push-docker.result }}
-          channel: '#team-catalysts'
-          webhook-url: ${{ env.SLACK_WEBHOOK_URL }}
-          message: Nightly Docker build failed - ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}

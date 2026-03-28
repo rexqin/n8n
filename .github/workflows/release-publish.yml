@@ -118,8 +118,6 @@ jobs:
     permissions:
       contents: read
       id-token: write
-      packages: write
-      actions: read
     with:
       n8n_version: ${{ needs.determine-version-info.outputs.version }}
       release_type: ${{ needs.determine-version-info.outputs.release_type }}
