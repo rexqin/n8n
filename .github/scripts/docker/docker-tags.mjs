@@ -24,11 +24,11 @@ class TagGenerator {
 
 		const aliyun =
 			includeAliyun && this.acrRegistry && this.acrNamespace
-				? [`${this.acrRegistry}/${this.acrNamespace}/${imageName}:${fullVersion}`]
+				? [`registry.cn-hangzhou.aliyuncs.com/rexqin/${imageName}:${fullVersion}`]
 				: [];
 
 		const tags = {
-			docker: includeDockerHub ? [`${this.dockerUsername}/${imageName}:${fullVersion}`] : [],
+			docker: includeDockerHub ? [`dolphinux${imageName}:${fullVersion}`] : [],
 			aliyun,
 		};
 
