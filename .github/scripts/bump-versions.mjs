@@ -26,6 +26,7 @@ const rootDir = process.cwd();
 const releaseType = process.env.RELEASE_TYPE;
 assert.match(releaseType, /^(patch|minor|major|experimental|premajor)$/, 'Invalid RELEASE_TYPE');
 
+//
 // TODO: if releaseType is `auto` determine release type based on the changelog
 
 const lastTag = (await exec('git describe --tags --match "n8n@*" --abbrev=0')).stdout.trim();
@@ -104,6 +105,7 @@ for (const packageName in packageMap) {
 				break;
 			default:
 				newVersion = semver.inc(version, releaseType);
+
 				break;
 		}
 	}
