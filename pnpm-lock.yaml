@@ -39,6 +39,9 @@ catalogs:
     '@codemirror/view':
       specifier: 6.39.8
       version: 6.39.8
+    '@infisical/cli':
+      specifier: ^0.43.40
+      version: 0.43.40
     '@langchain/anthropic':
       specifier: 1.1.3
       version: 1.1.3
@@ -434,6 +437,9 @@ importers:
       '@dotenvx/dotenvx':
         specifier: ^1.40.0
         version: 1.55.1
+      '@infisical/cli':
+        specifier: 'catalog:'
+        version: 0.43.40
       '@n8n/eslint-config':
         specifier: workspace:*
         version: link:packages/@n8n/eslint-config
@@ -6047,6 +6053,10 @@ packages:
   '@iconify/utils@2.1.25':
     resolution: {integrity: sha512-Y+iGko8uv/Fz5bQLLJyNSZGOdMW0G7cnlEX1CiNcKsRXX9cq/y/vwxrIAtLCZhKHr3m0VJmsjVPsvnM4uX8YLg==}
 
+  '@infisical/cli@0.43.40':
+    resolution: {integrity: sha512-f2BNsIp0j5z3TEtFwXuPAYTeoZc94kyOZ5OkBITe0RSgIet2V8B08xF+qiaubZ1hiN3nBtFjggyGtea7GEGxjg==}
+    hasBin: true
+
   '@internationalized/date@3.9.0':
     resolution: {integrity: sha512-yaN3brAnHRD+4KyyOsJyk49XUvj2wtbNACSqg0bz3u8t2VuzhC8Q5dfRnrSxjnnbDb+ienBnkn1TzQfE154vyg==}
 
@@ -11093,6 +11103,9 @@ packages:
   bson@6.10.4:
     resolution: {integrity: sha512-WIsKqkSC0ABoBJuT1LEX+2HEvNmNKKgnTAyd0fL8qzK4SH2i9NXg+t08YtdZp/V9IZ33cxe3iV4yM0qg8lMQng==}
     engines: {node: '>=16.20.1'}
+
+  buffer-crc32@0.2.13:
+    resolution: {integrity: sha512-VO9Ht/+p3SN7SKWqcrgEzjGbRSJYTx+Q1pTQC0wrWqHx0vpJraQ6GtHx8tvcg1rlK1byhU5gccxgOgj7B0TDkQ==}
 
   buffer-crc32@1.0.0:
     resolution: {integrity: sha512-Db1SbgBS/fg/392AblrMJk97KggmvYhr4pB5ZIMTWtaivCPMWLkmb7m21cJvpvgK+J3nsU2CmmixNBZx4vFj/w==}
@@ -16444,6 +16457,9 @@ packages:
     resolution: {integrity: sha512-ZI3LnwUv5nOGbQzD9c2iDG6toheuXSZP5esSHBjopsXH4dg19soufvpUGA3uohi5anFtGb2lhAVdHzH6R/Evvg==}
     engines: {node: '>=8'}
 
+  pend@1.2.0:
+    resolution: {integrity: sha512-F3asv42UuXchdzt+xXqfW1OGlVBe+mxa2mqI0pg5yAHZPvFmY3Y6drSf/GQ1A86WgWEN9Kzh/WrgKa6iGcHXLg==}
+
   perfect-debounce@1.0.0:
     resolution: {integrity: sha512-xCy9V055GLEqoFaHoC1SoLIaLmWctgCUaBaWxDZ7/Zx4CTyX7cJQLJOok/orfjZAh9kEYpjJa4d0KcJmCbctZA==}
 
@@ -19761,6 +19777,10 @@ packages:
 
   yargs@17.7.2:
     resolution: {integrity: sha512-7dSzzRQ++CKnNI/krKnYRV7JKKPUXMEh61soaHKg9mrWEhzFWhFnxPxGl+69cD1Ou63C13NUPCnmIcrvqCuM6w==}
+    engines: {node: '>=12'}
+
+  yauzl@3.2.1:
+    resolution: {integrity: sha512-k1isifdbpNSFEHFJ1ZY4YDewv0IH9FR61lDetaRMD3j2ae3bIXGV+7c+LHCqtQGofSd8PIyV4X6+dHMAnSr60A==}
     engines: {node: '>=12'}
 
   yjs@13.6.29:
@@ -23245,6 +23265,11 @@ snapshots:
       mlly: 1.8.0
     transitivePeerDependencies:
       - supports-color
+
+  '@infisical/cli@0.43.40':
+    dependencies:
+      tar: 7.5.11
+      yauzl: 3.2.1
 
   '@internationalized/date@3.9.0':
     dependencies:
@@ -29464,6 +29489,8 @@ snapshots:
   bson@6.10.0: {}
 
   bson@6.10.4: {}
+
+  buffer-crc32@0.2.13: {}
 
   buffer-crc32@1.0.0: {}
 
@@ -36185,6 +36212,8 @@ snapshots:
 
   peek-readable@4.1.0: {}
 
+  pend@1.2.0: {}
+
   perfect-debounce@1.0.0: {}
 
   perfect-scrollbar@1.5.5: {}
@@ -40152,6 +40181,11 @@ snapshots:
       string-width: 4.2.3
       y18n: 5.0.8
       yargs-parser: 21.1.1
+
+  yauzl@3.2.1:
+    dependencies:
+      buffer-crc32: 0.2.13
+      pend: 1.2.0
 
   yjs@13.6.29:
     dependencies:
