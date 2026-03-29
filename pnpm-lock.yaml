@@ -4003,9 +4003,6 @@ importers:
       '@playwright/test':
         specifier: catalog:e2e
         version: 1.58.0
-      '@rexqin/n8n':
-        specifier: workspace:*
-        version: link:../../cli
       '@types/autocannon':
         specifier: ^7.12.7
         version: 7.12.7
@@ -4027,6 +4024,9 @@ importers:
       mockserver-client:
         specifier: ^5.15.0
         version: 5.15.0
+      n8n:
+        specifier: workspace:*
+        version: link:../../cli
       n8n-containers:
         specifier: workspace:*
         version: link:../containers
