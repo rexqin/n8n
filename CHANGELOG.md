@@ -19,6 +19,27 @@
 * update ([ac22d67](https://github.com/rexqin/n8n/commit/ac22d67a0451cc84b156ce44b7a143dde13bdc4a))
 
 
+## [2.14.4](https://github.com/rexqin/n8n/compare/n8n@2.14.3...n8n@2.14.4) (2026-03-29)
+
+
+### Bug Fixes
+
+* **ci:** 关闭 Docker 构建的 SBOM 以避免 registry 报 blob type invalid ([0a450b4](https://github.com/rexqin/n8n/commit/0a450b4897b07aeb98a7386ff269216089c438f0))
+* **ci:** 增大 bump-versions 中 pnpm ls 的 exec maxBuffer ([312e120](https://github.com/rexqin/n8n/commit/312e120b89725f1e10584efc87dd91581d9bbbab))
+* **ci:** 增大 detect-new-packages 中 pnpm ls 的 exec maxBuffer ([43ea4c3](https://github.com/rexqin/n8n/commit/43ea4c3cd5d0d413f3edf059f2bccc1818e1f28e))
+* **ci:** 增大 ensure-provenance-fields 中 pnpm ls 的 exec maxBuffer ([7727dae](https://github.com/rexqin/n8n/commit/7727dae56da73b0c535d9f57115edd43207ab80d))
+* **ci:** 增大 ensure-provenance-fields 的 pnpm ls maxBuffer 与发布流程 Node 堆内存 ([f6227d1](https://github.com/rexqin/n8n/commit/f6227d1e5497ca009b235a2d273eb796f80099a3))
+* **ci:** 设置 BUILDX_NO_DEFAULT_ATTESTATIONS 避免推送镜像时 blob type invalid ([9fc9a66](https://github.com/rexqin/n8n/commit/9fc9a66c410a17019cf366289f12fca8aa72b11d))
+* docker-tags 中 Docker Hub 镜像引用补全命名空间斜杠 ([35a3e63](https://github.com/rexqin/n8n/commit/35a3e631a10fb79889239b083fa358c343896286))
+
+
+### Features
+
+* update ([71ba784](https://github.com/rexqin/n8n/commit/71ba7843bf09009bb8f217a9d49c38b0750481ec))
+* update ([cd5e1a4](https://github.com/rexqin/n8n/commit/cd5e1a46c62ca9d58b9eb67c9edc795fed7b085c))
+* update ([ac22d67](https://github.com/rexqin/n8n/commit/ac22d67a0451cc84b156ce44b7a143dde13bdc4a))
+
+
 ## [2.14.4](https://github.com/rexqin/n8n/compare/n8n@2.14.3...n8n@2.14.4) (2026-03-28)
 
 
