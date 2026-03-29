@@ -81,13 +81,3 @@ jobs:
           echo "SBOM and VEX attached to release"
           echo "  - SBOM: $COMPONENT_COUNT components"
           echo "  - VEX: $VEX_STATEMENTS CVE statements"
-
-      - name: Notify Slack on failure
-        if: failure()
-        uses: act10ns/slack@44541246747a30eb3102d87f7a4cc5471b0ffb7d # v2.1.0
-        with:
-          status: ${{ job.status }}
-          channel: '#alerts-build'
-          webhook-url: ${{ env.SLACK_WEBHOOK_URL }}
-          message: |
-            <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}| SBOM generation and attachment failed for release ${{ inputs.release_tag_ref }} >
