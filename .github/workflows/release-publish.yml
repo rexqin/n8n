@@ -109,10 +109,22 @@ jobs:
       # - name: Cleanup rc tag
       #   run: npm dist-tag rm n8n rc
       #   continue-on-error: true
+  publish-to-aliyun-acr:
+    name: Publish to DockerHub
+    needs: [determine-version-info]
+    uses: ./.github/workflows/docker-build-push.yml
+    # Caller must grant everything docker-build-push.yml declares (job-level permissions replace defaults for this call).
+    permissions:
+      contents: read
+      id-token: write
+    with:
+      n8n_version: ${{ needs.determine-version-info.outputs.version }}
+      release_type: ${{ needs.determine-version-info.outputs.release_type }}
+    secrets: inherit
 
   deploy-aliyun-ecs:
     name: Deploy to Aliyun ECS
-    needs: [determine-version-info]
+    needs: [determine-version-info, publish-to-aliyun-acr]
     if: github.event.pull_request.merged == true
     permissions:
       contents: read
