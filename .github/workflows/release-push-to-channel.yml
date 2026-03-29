@@ -68,44 +68,44 @@ jobs:
           fi
           echo "✅ Version '$INPUT_VERSION' is allowed for '$CHANNEL' channel"
 
-  release-to-npm:
-    name: Release to NPM
-    runs-on: ubuntu-latest
-    needs: validate-inputs
-    timeout-minutes: 5
-    environment: release
-    permissions:
-      id-token: write
-    steps:
-      - name: Fetch secrets from Infisical
-        uses: Infisical/secrets-action@v1.0.15
-        with:
-          method: oidc
-          identity-id: 436a2630-fad8-475b-8f00-5ab158e9919e
-          project-slug: project-nd-zj
-          env-slug: dev
-          secret-path: /n8n
+  # release-to-npm:
+  #   name: Release to NPM
+  #   runs-on: ubuntu-latest
+  #   needs: validate-inputs
+  #   timeout-minutes: 5
+  #   environment: release
+  #   permissions:
+  #     id-token: write
+  #   steps:
+  #     - name: Fetch secrets from Infisical
+  #       uses: Infisical/secrets-action@v1.0.15
+  #       with:
+  #         method: oidc
+  #         identity-id: 436a2630-fad8-475b-8f00-5ab158e9919e
+  #         project-slug: project-nd-zj
+  #         env-slug: prod
+  #         secret-path: /n8n
 
-      - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
-        with:
-          node-version: 24.13.1
+  #     - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+  #       with:
+  #         node-version: 24.13.1
 
-      # Remove after https://github.com/npm/cli/issues/8547 gets resolved
-      - run: echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}" > ~/.npmrc
-        env:
-          NPM_TOKEN: ${{ env.NPM_TOKEN }}
+  #     # Remove after https://github.com/npm/cli/issues/8547 gets resolved
+  #     - run: echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}" > ~/.npmrc
+  #       env:
+  #         NPM_TOKEN: ${{ env.NPM_TOKEN }}
 
-      - name: Add beta/next tags to NPM
-        if: needs.validate-inputs.outputs.release_channel == 'beta'
-        run: |
-          npm dist-tag add "n8n@${{ needs.validate-inputs.outputs.version }}" next
-          npm dist-tag add "n8n@${{ needs.validate-inputs.outputs.version }}" beta
+  #     - name: Add beta/next tags to NPM
+  #       if: needs.validate-inputs.outputs.release_channel == 'beta'
+  #       run: |
+  #         npm dist-tag add "n8n@${{ needs.validate-inputs.outputs.version }}" next
+  #         npm dist-tag add "n8n@${{ needs.validate-inputs.outputs.version }}" beta
 
-      - name: Add latest/stable tags to NPM
-        if: needs.validate-inputs.outputs.release_channel == 'stable'
-        run: |
-          npm dist-tag add "n8n@${{ needs.validate-inputs.outputs.version }}" latest
-          npm dist-tag add "n8n@${{ needs.validate-inputs.outputs.version }}" stable
+  #     - name: Add latest/stable tags to NPM
+  #       if: needs.validate-inputs.outputs.release_channel == 'stable'
+  #       run: |
+  #         npm dist-tag add "n8n@${{ needs.validate-inputs.outputs.version }}" latest
+  #         npm dist-tag add "n8n@${{ needs.validate-inputs.outputs.version }}" stable
 
   release-to-docker-hub:
     name: Release to DockerHub
@@ -123,7 +123,7 @@ jobs:
           method: oidc
           identity-id: 436a2630-fad8-475b-8f00-5ab158e9919e
           project-slug: project-nd-zj
-          env-slug: dev
+          env-slug: prod
           secret-path: /n8n
 
       - name: Login to DockerHub
@@ -137,7 +137,7 @@ jobs:
       - name: Tag stable/latest Docker image
         if: needs.validate-inputs.outputs.release_channel == 'stable'
         env:
-          DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+          DOCKER_USERNAME: ${{ env.DOCKER_USERNAME }}
         run: |
           docker buildx imagetools create -t "${DOCKER_USERNAME}/n8n:stable" "${DOCKER_USERNAME}/n8n:${{ needs.validate-inputs.outputs.version }}"
           docker buildx imagetools create -t "${DOCKER_USERNAME}/n8n:latest" "${DOCKER_USERNAME}/n8n:${{ needs.validate-inputs.outputs.version }}"
@@ -154,53 +154,78 @@ jobs:
           docker buildx imagetools create -t "${DOCKER_USERNAME}/runners:beta" "${DOCKER_USERNAME}/runners:${{ needs.validate-inputs.outputs.version }}"
           docker buildx imagetools create -t "${DOCKER_USERNAME}/runners:next" "${DOCKER_USERNAME}/runners:${{ needs.validate-inputs.outputs.version }}"
 
-  release-to-github-container-registry:
-    name: Release to GitHub Container Registry
+  release-to-aliyun-acr:
+    name: Release to Aliyun ACR
     runs-on: ubuntu-latest
     needs: validate-inputs
     timeout-minutes: 5
     environment: release
-    permissions:
-      packages: write
     steps:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
-      - name: Login to GitHub Container Registry
-        uses: ./.github/actions/docker-registry-login
-
-      - name: Tag stable/latest GHCR image
-        if: needs.validate-inputs.outputs.release_channel == 'stable'
-        run: |
-          docker buildx imagetools create -t "ghcr.io/${{ github.repository_owner }}/n8n:stable" "ghcr.io/${{ github.repository_owner }}/n8n:${{ needs.validate-inputs.outputs.version }}"
-          docker buildx imagetools create -t "ghcr.io/${{ github.repository_owner }}/n8n:latest" "ghcr.io/${{ github.repository_owner }}/n8n:${{ needs.validate-inputs.outputs.version }}"
-          docker buildx imagetools create -t "ghcr.io/${{ github.repository_owner }}/runners:stable" "ghcr.io/${{ github.repository_owner }}/runners:${{ needs.validate-inputs.outputs.version }}"
-          docker buildx imagetools create -t "ghcr.io/${{ github.repository_owner }}/runners:latest" "ghcr.io/${{ github.repository_owner }}/runners:${{ needs.validate-inputs.outputs.version }}"
-
-      - name: Tag beta/next GHCR image
-        if: needs.validate-inputs.outputs.release_channel == 'beta'
-        run: |
-          docker buildx imagetools create -t "ghcr.io/${{ github.repository_owner }}/n8n:beta" "ghcr.io/${{ github.repository_owner }}/n8n:${{ needs.validate-inputs.outputs.version }}"
-          docker buildx imagetools create -t "ghcr.io/${{ github.repository_owner }}/n8n:next" "ghcr.io/${{ github.repository_owner }}/n8n:${{ needs.validate-inputs.outputs.version }}"
-          docker buildx imagetools create -t "ghcr.io/${{ github.repository_owner }}/runners:beta" "ghcr.io/${{ github.repository_owner }}/runners:${{ needs.validate-inputs.outputs.version }}"
-          docker buildx imagetools create -t "ghcr.io/${{ github.repository_owner }}/runners:next" "ghcr.io/${{ github.repository_owner }}/runners:${{ needs.validate-inputs.outputs.version }}"
-
-  update-docs:
-    name: Update latest and next in the docs
-    runs-on: ubuntu-latest
-    needs: [validate-inputs, release-to-npm, release-to-docker-hub]
-    environment: release
-    steps:
       - name: Fetch secrets from Infisical
         uses: Infisical/secrets-action@v1.0.15
         with:
           method: oidc
           identity-id: 436a2630-fad8-475b-8f00-5ab158e9919e
           project-slug: project-nd-zj
-          env-slug: dev
+          env-slug: prod
           secret-path: /n8n
 
-      - continue-on-error: true
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd # v4.0.0
+
+      - name: Validate Aliyun ACR variables
+        run: |
+          test -n "${ACR_REGISTRY:-}" || { echo "::error::Missing ACR_REGISTRY from Infisical"; exit 1; }
+          test -n "${ACR_NAMESPACE:-}" || { echo "::error::Missing ACR_NAMESPACE from Infisical"; exit 1; }
+          test -n "${ACR_USERNAME:-}" || { echo "::error::Missing ACR_USERNAME from Infisical"; exit 1; }
+          test -n "${ACR_PASSWORD:-}" || { echo "::error::Missing ACR_PASSWORD from Infisical"; exit 1; }
+
+      - name: Login to Aliyun ACR
+        uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # v4.0.0
+        with:
+          registry: ${{ env.ACR_REGISTRY }}
+          username: ${{ env.ACR_USERNAME }}
+          password: ${{ env.ACR_PASSWORD }}
+
+      - name: Tag stable/latest Aliyun ACR image
+        if: needs.validate-inputs.outputs.release_channel == 'stable'
         env:
-          DOCS_PASSWORD: ${{ env.N8N_WEBHOOK_DOCS_PASSWORD }}
-        run: curl -u "docsWorkflows:${DOCS_PASSWORD}" --request GET 'https://internal.users.n8n.cloud/webhook/update-latest-next'
+          ACR_BASE: ${{ env.ACR_REGISTRY }}/${{ env.ACR_NAMESPACE }}
+        run: |
+          docker buildx imagetools create -t "${ACR_BASE}/n8n:stable" "${ACR_BASE}/n8n:${{ needs.validate-inputs.outputs.version }}"
+          docker buildx imagetools create -t "${ACR_BASE}/n8n:latest" "${ACR_BASE}/n8n:${{ needs.validate-inputs.outputs.version }}"
+          docker buildx imagetools create -t "${ACR_BASE}/runners:stable" "${ACR_BASE}/runners:${{ needs.validate-inputs.outputs.version }}-distroless"
+          docker buildx imagetools create -t "${ACR_BASE}/runners:latest" "${ACR_BASE}/runners:${{ needs.validate-inputs.outputs.version }}-distroless"
+
+      - name: Tag beta/next Aliyun ACR image
+        if: needs.validate-inputs.outputs.release_channel == 'beta'
+        env:
+          ACR_BASE: ${{ env.ACR_REGISTRY }}/${{ env.ACR_NAMESPACE }}
+        run: |
+          docker buildx imagetools create -t "${ACR_BASE}/n8n:beta" "${ACR_BASE}/n8n:${{ needs.validate-inputs.outputs.version }}"
+          docker buildx imagetools create -t "${ACR_BASE}/n8n:next" "${ACR_BASE}/n8n:${{ needs.validate-inputs.outputs.version }}"
+          docker buildx imagetools create -t "${ACR_BASE}/runners:beta" "${ACR_BASE}/runners:${{ needs.validate-inputs.outputs.version }}-distroless"
+          docker buildx imagetools create -t "${ACR_BASE}/runners:next" "${ACR_BASE}/runners:${{ needs.validate-inputs.outputs.version }}-distroless"
+
+  # update-docs:
+  #   name: Update latest and next in the docs
+  #   runs-on: ubuntu-latest
+  #   needs: [validate-inputs, release-to-npm, release-to-docker-hub]
+  #   environment: release
+  #   steps:
+  #     - name: Fetch secrets from Infisical
+  #       uses: Infisical/secrets-action@v1.0.15
+  #       with:
+  #         method: oidc
+  #         identity-id: 436a2630-fad8-475b-8f00-5ab158e9919e
+  #         project-slug: project-nd-zj
+  #         env-slug: prod
+  #         secret-path: /n8n
+
+  #     - continue-on-error: true
+  #       env:
+  #         DOCS_PASSWORD: ${{ env.N8N_WEBHOOK_DOCS_PASSWORD }}
+  #       run: curl -u "docsWorkflows:${DOCS_PASSWORD}" --request GET 'https://internal.users.n8n.cloud/webhook/update-latest-next'

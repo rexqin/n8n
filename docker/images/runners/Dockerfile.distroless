@@ -2,14 +2,16 @@
 # DISTROLESS RUNNERS IMAGE
 # ==============================================================================
 # This is a distroless variant of docker/images/runners/Dockerfile, intended
-# for cloud deployments. It removes all shell, package managers, and system
-# utilities for security hardening.
+# for cloud deployments. It removes package managers and most system utilities
+# for security hardening. Bash (+ its Debian 12 libs) is copied in for
+# docker exec / debugging; the image otherwise stays non-interactive by default.
 #
 # Key differences:
 # - Uses Debian-based builders (glibc instead of musl)
 # - Final image is Google's distroless/cc-debian12
 # - Extra runtime-prep stage to organize filesystem
 # - Uses distroless nonroot user (UID 65532)
+# - Bash copied from bookworm + ldd deps (for exec/debug); still no apt/pkg manager
 # ==============================================================================
 
 ARG NODE_VERSION=24.13.1
@@ -84,6 +86,7 @@ COPY packages/@n8n/task-runner-python/pyproject.toml \
     ./
 
 RUN uv venv
+# Full optional set: sentry + browser (playwright/pydoll) for cloud/distroless image only
 RUN uv sync \
     --frozen \
     --no-editable \
@@ -164,6 +167,27 @@ COPY --from=launcher-downloader /launcher-bin/* /runtime/usr/local/bin/
 # Copy configuration
 COPY docker/images/runners/n8n-task-runners.json /runtime/etc/n8n-task-runners.json
 
+# Bash + dynamic libs (Debian bookworm, matches cc-debian12) for docker exec / ops.
+# Distroless base has no shell; without this, `docker exec … bash` cannot work.
+RUN apt-get update && apt-get install -y --no-install-recommends bash && \
+    mkdir -p /runtime/bin && \
+    cp /bin/bash /runtime/bin/bash && \
+    chmod +x /runtime/bin/bash && \
+    set -eux; \
+    ldd /bin/bash | sed -n 's/.*=> \([^ ]*\) (.*/\1/p' | while read -r lib; do \
+      if [ -n "$lib" ] && [ -f "$lib" ]; then \
+        mkdir -p "/runtime$(dirname "$lib")"; \
+        cp -L "$lib" "/runtime$lib"; \
+      fi; \
+    done; \
+    ldd /bin/bash | awk '$1 ~ /^\// {print $1}' | while read -r lib; do \
+      if [ -n "$lib" ] && [ -f "$lib" ]; then \
+        mkdir -p "/runtime$(dirname "$lib")"; \
+        cp -L "$lib" "/runtime$lib"; \
+      fi; \
+    done; \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
+
 # Create necessary directories with proper permissions
 RUN mkdir -p /runtime/home/runner && \
     chmod 755 /runtime/home/runner && \
@@ -177,7 +201,7 @@ RUN mkdir -p /runtime/home/runner && \
 # - CA certificates
 # - Timezone data
 # - nonroot user (UID 65532)
-# - NO shell, NO package manager, NO system utilities
+# - NO package manager, NO apt; bash is added via runtime-prep (see above)
 # ==============================================================================
 FROM gcr.io/distroless/cc-debian12:latest AS runtime
 ARG N8N_VERSION=snapshot
@@ -186,7 +210,8 @@ ARG N8N_RELEASE_TYPE=dev
 ENV NODE_ENV=production \
     N8N_RELEASE_TYPE=${N8N_RELEASE_TYPE} \
     PLAYWRIGHT_BROWSERS_PATH=/app/task-runner-python/.playwright-browsers \
-    HOME=/home/runner
+    HOME=/home/runner \
+    SHELL=/bin/bash
 
 # Copy everything from the prepared runtime filesystem
 COPY --from=runtime-prep --chown=root:root /runtime/ /

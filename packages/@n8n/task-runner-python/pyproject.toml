@@ -5,12 +5,15 @@ description = "Native Python task runner for n8n"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
-    "playwright>=1.55.0",
-    "pydoll-python>=2.22.0",
     "websockets>=14,<15",
 ]
 
 [project.optional-dependencies]
+# Browser automation (manylinux wheels; install in docker/images/runners/Dockerfile.distroless only by default)
+browser = [
+    "playwright>=1.55.0",
+    "pydoll-python>=2.21.0",
+]
 sentry = ["sentry-sdk>=2.35.2"]
 
 [tool.uv]

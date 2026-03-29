@@ -4,12 +4,13 @@ import { appendFileSync } from 'node:fs';
 
 class TagGenerator {
 	constructor() {
-		this.githubOwner = process.env.GITHUB_REPOSITORY_OWNER || 'n8n-io';
 		this.dockerUsername = process.env.DOCKER_USERNAME || 'n8nio';
+		this.acrRegistry = process.env.ACR_REGISTRY || '';
+		this.acrNamespace = process.env.ACR_NAMESPACE || '';
 		this.githubOutput = process.env.GITHUB_OUTPUT || null;
 	}
 
-	generate({ image, version, platform, includeDockerHub = false }) {
+	generate({ image, version, platform, includeDockerHub = false, includeAliyun = false }) {
 		let imageName = image;
 		let versionSuffix = '';
 
@@ -21,23 +22,29 @@ class TagGenerator {
 		const platformSuffix = platform ? `-${platform.split('/').pop()}` : '';
 		const fullVersion = `${version}${versionSuffix}${platformSuffix}`;
 
+		const aliyun =
+			includeAliyun && this.acrRegistry && this.acrNamespace
+				? [`registry.cn-hangzhou.aliyuncs.com/rexqin/${imageName}:${fullVersion}`]
+				: [];
+
 		const tags = {
-			ghcr: [`ghcr.io/${this.githubOwner}/${imageName}:${fullVersion}`],
-			docker: includeDockerHub ? [`${this.dockerUsername}/${imageName}:${fullVersion}`] : [],
+			docker: includeDockerHub ? [`dolphinux/${imageName}:${fullVersion}`] : [],
+			aliyun,
 		};
 
-		tags.all = [...tags.ghcr, ...tags.docker];
+		tags.all = [...tags.docker, ...tags.aliyun];
 		return tags;
 	}
 
 	output(tags, prefix = '') {
 		if (this.githubOutput) {
 			const prefixStr = prefix ? `${prefix}_` : '';
-			const primaryTag = tags.ghcr[0] ? tags.ghcr[0].replace(/-amd64$|-arm64$/, '') : '';
+			const primarySource = tags.docker[0] || tags.aliyun[0] || '';
+			const primaryTag = primarySource ? primarySource.replace(/-amd64$|-arm64$/, '') : '';
 			const outputs = [
 				`${prefixStr}tags=${tags.all.join(',')}`,
-				`${prefixStr}ghcr_tag=${tags.ghcr[0] || ''}`,
 				`${prefixStr}docker_tag=${tags.docker[0] || ''}`,
+				`${prefixStr}aliyun_tag=${tags.aliyun[0] || ''}`,
 				`${prefixStr}primary_tag=${primaryTag}`,
 			];
 			appendFileSync(this.githubOutput, outputs.join('\n') + '\n');
@@ -46,12 +53,12 @@ class TagGenerator {
 		}
 	}
 
-	generateAll({ version, platform, includeDockerHub = false }) {
+	generateAll({ version, platform, includeDockerHub = false, includeAliyun = false }) {
 		const images = ['n8n', 'runners', 'runners-distroless'];
 		const results = {};
 
 		for (const image of images) {
-			const tags = this.generate({ image, version, platform, includeDockerHub });
+			const tags = this.generate({ image, version, platform, includeDockerHub, includeAliyun });
 			const prefix = image.replace('-distroless', '_distroless');
 			results[prefix] = tags;
 
@@ -86,6 +93,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
 				version,
 				platform: getArg('platform'),
 				includeDockerHub: hasFlag('include-docker'),
+				includeAliyun: hasFlag('include-aliyun'),
 			});
 			if (!generator.githubOutput) {
 				console.log(JSON.stringify(results, null, 2));
@@ -101,6 +109,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
 				version,
 				platform: getArg('platform'),
 				includeDockerHub: hasFlag('include-docker'),
+				includeAliyun: hasFlag('include-aliyun'),
 			});
 			generator.output(tags);
 		}

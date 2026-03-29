@@ -12,14 +12,8 @@ env:
 permissions:
   contents: read
   id-token: write
-  packages: write
-  # generator_container_slsa3 nested jobs require actions:read (caller must grant it)
-  actions: read
 
 on:
-  schedule:
-    - cron: '0 0 * * *'
-
   workflow_call:
     inputs:
       n8n_version:
@@ -44,10 +38,6 @@ on:
         required: false
         type: boolean
         default: true
-      success_url:
-        description: 'URL to call after the build is successful'
-        required: false
-        type: string
 
 jobs:
   determine-build-context:
@@ -79,13 +69,16 @@ jobs:
     needs: determine-build-context
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 25
+    env:
+      # BuildKit may still attach default attestations; some registries reject them (unknown: blob type invalid)
+      BUILDX_NO_DEFAULT_ATTESTATIONS: 1
     strategy:
       matrix: ${{ fromJSON(needs.determine-build-context.outputs.build_matrix) }}
     outputs:
       image_ref: ${{ steps.determine-tags.outputs.n8n_primary_tag }}
-      primary_ghcr_manifest_tag: ${{ steps.determine-tags.outputs.n8n_primary_tag }}
-      runners_primary_ghcr_manifest_tag: ${{ steps.determine-tags.outputs.runners_primary_tag }}
-      runners_distroless_primary_ghcr_manifest_tag: ${{ steps.determine-tags.outputs.runners_distroless_primary_tag }}
+      primary_manifest_tag: ${{ steps.determine-tags.outputs.n8n_primary_tag }}
+      runners_primary_manifest_tag: ${{ steps.determine-tags.outputs.runners_primary_tag }}
+      runners_distroless_primary_manifest_tag: ${{ steps.determine-tags.outputs.runners_distroless_primary_tag }}
     steps:
       - name: Checkout code
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -98,7 +91,7 @@ jobs:
           method: oidc
           identity-id: 436a2630-fad8-475b-8f00-5ab158e9919e
           project-slug: project-nd-zj
-          env-slug: dev
+          env-slug: prod
           secret-path: /n8n
 
       - name: Setup and Build
@@ -117,12 +110,65 @@ jobs:
             --all \
             --version "${{ needs.determine-build-context.outputs.n8n_version }}" \
             --platform "${{ matrix.docker_platform }}" \
-            ${{ needs.determine-build-context.outputs.push_to_docker == 'true' && '--include-docker' || '' }}
+            ${{ needs.determine-build-context.outputs.push_to_docker == 'true' && '--include-docker' || '' }} \
+            ${{ needs.determine-build-context.outputs.push_enabled == 'true' && '--include-aliyun' || '' }}
 
           echo "=== Generated Docker Tags ==="
           cat "$GITHUB_OUTPUT" | grep "_tags=" | while IFS='=' read -r key value; do
             echo "${key}: ${value%%,*}..."  # Show first tag for brevity
           done
+
+      - name: Build n8n Docker image (load to daemon)
+        id: build-n8n
+        uses: docker/build-push-action@d08e5c354a6adb9ed34480a06d141179aa583294 # v7.0.0
+        with:
+          context: .
+          file: ./docker/images/n8n/Dockerfile
+          build-args: |
+            NODE_VERSION=${{ env.NODE_VERSION }}
+            N8N_VERSION=${{ needs.determine-build-context.outputs.n8n_version }}
+            N8N_RELEASE_TYPE=${{ needs.determine-build-context.outputs.release_type }}
+          platforms: ${{ matrix.docker_platform }}
+          # Explicitly disable attestations; some registries (e.g. Aliyun ACR) return "unknown: blob type invalid"
+          provenance: false
+          sbom: false
+          load: true
+          push: false
+          tags: ${{ steps.determine-tags.outputs.n8n_tags }}
+
+      - name: Build task runners Docker image (Alpine, load to daemon)
+        id: build-runners
+        uses: docker/build-push-action@d08e5c354a6adb9ed34480a06d141179aa583294 # v7.0.0
+        with:
+          context: .
+          file: ./docker/images/runners/Dockerfile
+          build-args: |
+            NODE_VERSION=${{ env.NODE_VERSION }}
+            N8N_VERSION=${{ needs.determine-build-context.outputs.n8n_version }}
+            N8N_RELEASE_TYPE=${{ needs.determine-build-context.outputs.release_type }}
+          platforms: ${{ matrix.docker_platform }}
+          provenance: false
+          sbom: false
+          load: true
+          push: false
+          tags: ${{ steps.determine-tags.outputs.runners_tags }}
+
+      - name: Build task runners Docker image (distroless, load to daemon)
+        id: build-runners-distroless
+        uses: docker/build-push-action@d08e5c354a6adb9ed34480a06d141179aa583294 # v7.0.0
+        with:
+          context: .
+          file: ./docker/images/runners/Dockerfile.distroless
+          build-args: |
+            NODE_VERSION=${{ env.NODE_VERSION }}
+            N8N_VERSION=${{ needs.determine-build-context.outputs.n8n_version }}
+            N8N_RELEASE_TYPE=${{ needs.determine-build-context.outputs.release_type }}
+          platforms: ${{ matrix.docker_platform }}
+          provenance: false
+          sbom: false
+          load: true
+          push: false
+          tags: ${{ steps.determine-tags.outputs.runners_distroless_tags }}
 
       - name: Validate Aliyun ACR variables
         if: needs.determine-build-context.outputs.push_enabled == 'true'
@@ -132,31 +178,11 @@ jobs:
           test -n "${ACR_USERNAME:-}" || { echo "::error::Missing ACR_USERNAME from Infisical"; exit 1; }
           test -n "${ACR_PASSWORD:-}" || { echo "::error::Missing ACR_PASSWORD from Infisical"; exit 1; }
 
-      - name: Build Aliyun tags for all images
-        id: aliyun-tags
-        if: needs.determine-build-context.outputs.push_enabled == 'true'
-        run: |
-          set -euo pipefail
-
-          convert_tags() {
-            local source_tags="$1"
-            echo "$source_tags" \
-              | tr ',' '\n' \
-              | sed "s#^ghcr.io/${{ github.repository_owner }}/#${ACR_REGISTRY}/${ACR_NAMESPACE}/#" \
-              | paste -sd ',' -
-          }
-
-          {
-            echo "n8n_tags=$(convert_tags "${{ steps.determine-tags.outputs.n8n_tags }}")"
-            echo "runners_tags=$(convert_tags "${{ steps.determine-tags.outputs.runners_tags }}")"
-            echo "runners_distroless_tags=$(convert_tags "${{ steps.determine-tags.outputs.runners_distroless_tags }}")"
-          } >> "$GITHUB_OUTPUT"
-
       - name: Login to Docker registries
         if: needs.determine-build-context.outputs.push_enabled == 'true'
         uses: ./.github/actions/docker-registry-login
         with:
-          login-ghcr: true
+          login-ghcr: false
           login-dockerhub: ${{ needs.determine-build-context.outputs.push_to_docker == 'true' }}
           dockerhub-username: ${{ env.DOCKER_USERNAME }}
           dockerhub-password: ${{ env.DOCKER_PASSWORD }}
@@ -169,53 +195,23 @@ jobs:
           username: ${{ env.ACR_USERNAME }}
           password: ${{ env.ACR_PASSWORD }}
 
-      - name: Build and push n8n Docker image
-        id: build-n8n
-        uses: useblacksmith/build-push-action@30c71162f16ea2c27c3e21523255d209b8b538c1 # v2
-        with:
-          context: .
-          file: ./docker/images/n8n/Dockerfile
-          build-args: |
-            NODE_VERSION=${{ env.NODE_VERSION }}
-            N8N_VERSION=${{ needs.determine-build-context.outputs.n8n_version }}
-            N8N_RELEASE_TYPE=${{ needs.determine-build-context.outputs.release_type }}
-          platforms: ${{ matrix.docker_platform }}
-          provenance: false # Disabled - using SLSA L3 generator for isolated provenance
-          sbom: true
-          push: ${{ needs.determine-build-context.outputs.push_enabled == 'true' }}
-          tags: ${{ steps.determine-tags.outputs.n8n_tags }}${{ steps.aliyun-tags.outputs.n8n_tags && format(',{0}', steps.aliyun-tags.outputs.n8n_tags) || '' }}
-
-      - name: Build and push task runners Docker image (Alpine)
-        id: build-runners
-        uses: useblacksmith/build-push-action@30c71162f16ea2c27c3e21523255d209b8b538c1 # v2
-        with:
-          context: .
-          file: ./docker/images/runners/Dockerfile
-          build-args: |
-            NODE_VERSION=${{ env.NODE_VERSION }}
-            N8N_VERSION=${{ needs.determine-build-context.outputs.n8n_version }}
-            N8N_RELEASE_TYPE=${{ needs.determine-build-context.outputs.release_type }}
-          platforms: ${{ matrix.docker_platform }}
-          provenance: false # Disabled - using SLSA L3 generator for isolated provenance
-          sbom: true
-          push: ${{ needs.determine-build-context.outputs.push_enabled == 'true' }}
-          tags: ${{ steps.determine-tags.outputs.runners_tags }},${{ steps.aliyun-tags.outputs.runners_tags }}
-
-      - name: Build and push task runners Docker image (distroless)
-        id: build-runners-distroless
-        uses: useblacksmith/build-push-action@30c71162f16ea2c27c3e21523255d209b8b538c1 # v2
-        with:
-          context: .
-          file: ./docker/images/runners/Dockerfile.distroless
-          build-args: |
-            NODE_VERSION=${{ env.NODE_VERSION }}
-            N8N_VERSION=${{ needs.determine-build-context.outputs.n8n_version }}
-            N8N_RELEASE_TYPE=${{ needs.determine-build-context.outputs.release_type }}
-          platforms: ${{ matrix.docker_platform }}
-          provenance: false # Disabled - using SLSA L3 generator for isolated provenance
-          sbom: true
-          push: ${{ needs.determine-build-context.outputs.push_enabled == 'true' }}
-          tags: ${{ steps.determine-tags.outputs.runners_distroless_tags }},${{ steps.aliyun-tags.outputs.runners_distroless_tags }}
+      - name: Push loaded images to registries
+        if: needs.determine-build-context.outputs.push_enabled == 'true'
+        run: |
+          set -euo pipefail
+          push_tags_from_csv() {
+            local csv="$1"
+            [[ -n "$csv" ]] || { echo "::error::empty tag list"; exit 1; }
+            IFS=',' read -ra TAGS <<< "$csv"
+            for t in "${TAGS[@]}"; do
+              t=$(echo "$t" | xargs)
+              [[ -n "$t" ]] || continue
+              docker push "$t"
+            done
+          }
+          push_tags_from_csv "${{ steps.determine-tags.outputs.n8n_tags }}"
+          push_tags_from_csv "${{ steps.determine-tags.outputs.runners_tags }}"
+          push_tags_from_csv "${{ steps.determine-tags.outputs.runners_distroless_tags }}"
 
   create_multi_arch_manifest:
     name: Create Multi-Arch Manifest
@@ -224,13 +220,6 @@ jobs:
     if: |
       needs.build-and-push-docker.result == 'success' &&
       needs.determine-build-context.outputs.push_enabled == 'true'
-    outputs:
-      n8n_digest: ${{ steps.get-digests.outputs.n8n_digest }}
-      n8n_image: ${{ steps.get-digests.outputs.n8n_image }}
-      runners_digest: ${{ steps.get-digests.outputs.runners_digest }}
-      runners_image: ${{ steps.get-digests.outputs.runners_image }}
-      runners_distroless_digest: ${{ steps.get-digests.outputs.runners_distroless_digest }}
-      runners_distroless_image: ${{ steps.get-digests.outputs.runners_distroless_image }}
     steps:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -241,7 +230,7 @@ jobs:
           method: oidc
           identity-id: 436a2630-fad8-475b-8f00-5ab158e9919e
           project-slug: project-nd-zj
-          env-slug: dev
+          env-slug: prod
           secret-path: /n8n
 
       - name: Set up Docker Buildx
@@ -250,7 +239,7 @@ jobs:
       - name: Login to Docker registries
         uses: ./.github/actions/docker-registry-login
         with:
-          login-ghcr: true
+          login-ghcr: false
           login-dockerhub: ${{ needs.determine-build-context.outputs.push_to_docker == 'true' }}
           dockerhub-username: ${{ env.DOCKER_USERNAME }}
           dockerhub-password: ${{ env.DOCKER_PASSWORD }}
@@ -261,40 +250,6 @@ jobs:
           registry: ${{ env.ACR_REGISTRY }}
           username: ${{ env.ACR_USERNAME }}
           password: ${{ env.ACR_PASSWORD }}
-
-      - name: Create GHCR multi-arch manifests
-        run: |
-          RELEASE_TYPE="${{ needs.determine-build-context.outputs.release_type }}"
-
-          # Function to create manifest for an image
-          create_manifest() {
-            local IMAGE_NAME=$1
-            local MANIFEST_TAG=$2
-
-            if [[ -z "$MANIFEST_TAG" ]]; then
-              echo "Skipping $IMAGE_NAME - no manifest tag"
-              return
-            fi
-
-            echo "Creating GHCR manifest for $IMAGE_NAME: $MANIFEST_TAG"
-
-            # For branch builds, only AMD64 is built
-            if [[ "$RELEASE_TYPE" == "branch" ]]; then
-              docker buildx imagetools create \
-                --tag "$MANIFEST_TAG" \
-                "${MANIFEST_TAG}-amd64"
-            else
-              docker buildx imagetools create \
-                --tag "$MANIFEST_TAG" \
-                "${MANIFEST_TAG}-amd64" \
-                "${MANIFEST_TAG}-arm64"
-            fi
-          }
-
-          # Create manifests for all images
-          create_manifest "n8n" "${{ needs.build-and-push-docker.outputs.primary_ghcr_manifest_tag }}"
-          create_manifest "runners" "${{ needs.build-and-push-docker.outputs.runners_primary_ghcr_manifest_tag }}"
-          create_manifest "runners-distroless" "${{ needs.build-and-push-docker.outputs.runners_distroless_primary_ghcr_manifest_tag }}"
 
       - name: Create Docker Hub manifests
         if: needs.determine-build-context.outputs.push_to_docker == 'true'
@@ -348,189 +303,3 @@ jobs:
                 "${ACR_BASE}/${IMAGE_NAME}:${TAG_SUFFIX}-arm64"
             fi
           done
-
-      - name: Get manifest digests for attestation
-        id: get-digests
-        env:
-          N8N_TAG: ${{ needs.build-and-push-docker.outputs.primary_ghcr_manifest_tag }}
-          RUNNERS_TAG: ${{ needs.build-and-push-docker.outputs.runners_primary_ghcr_manifest_tag }}
-          DISTROLESS_TAG: ${{ needs.build-and-push-docker.outputs.runners_distroless_primary_ghcr_manifest_tag }}
-        run: node .github/scripts/docker/get-manifest-digests.mjs
-
-  call-success-url:
-    name: Call Success URL
-    needs: [create_multi_arch_manifest]
-    runs-on: ubuntu-latest
-    if: needs.create_multi_arch_manifest.result == 'success' || needs.create_multi_arch_manifest.result == 'skipped'
-    steps:
-      - name: Call Success URL
-        env:
-          SUCCESS_URL: ${{ github.event.inputs.success_url }}
-        if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.success_url != '' }}
-        run: |
-          echo "Calling success URL: ${{ env.SUCCESS_URL }}"
-          curl -v "${{ env.SUCCESS_URL }}" || echo "Failed to call success URL"
-        shell: bash
-
-  # SLSA L3 Provenance - Must use version tags (@vX.Y.Z), NOT SHAs
-  provenance-n8n:
-    name: SLSA Provenance (n8n)
-    needs: [determine-build-context, build-and-push-docker, create_multi_arch_manifest]
-    if: |
-      needs.create_multi_arch_manifest.result == 'success' &&
-      needs.create_multi_arch_manifest.outputs.n8n_digest != ''
-    permissions:
-      id-token: write
-      packages: write
-      actions: read
-    uses: slsa-framework/slsa-github-generator/.github/workflows/generator_container_slsa3.yml@f7dd8c54c2067bafc12ca7a55595d5ee9b75204a
-    with:
-      image: ${{ needs.create_multi_arch_manifest.outputs.n8n_image }}
-      digest: ${{ needs.create_multi_arch_manifest.outputs.n8n_digest }}
-      registry-username: ${{ github.actor }}
-    secrets:
-      registry-password: ${{ secrets.GITHUB_TOKEN }}
-
-  provenance-runners:
-    name: SLSA Provenance (runners)
-    needs: [determine-build-context, build-and-push-docker, create_multi_arch_manifest]
-    if: |
-      needs.create_multi_arch_manifest.result == 'success' &&
-      needs.create_multi_arch_manifest.outputs.runners_digest != ''
-    permissions:
-      id-token: write
-      packages: write
-      actions: read
-    uses: slsa-framework/slsa-github-generator/.github/workflows/generator_container_slsa3.yml@f7dd8c54c2067bafc12ca7a55595d5ee9b75204a
-    with:
-      image: ${{ needs.create_multi_arch_manifest.outputs.runners_image }}
-      digest: ${{ needs.create_multi_arch_manifest.outputs.runners_digest }}
-      registry-username: ${{ github.actor }}
-    secrets:
-      registry-password: ${{ secrets.GITHUB_TOKEN }}
-
-  provenance-runners-distroless:
-    name: SLSA Provenance (runners-distroless)
-    needs: [determine-build-context, build-and-push-docker, create_multi_arch_manifest]
-    if: |
-      needs.create_multi_arch_manifest.result == 'success' &&
-      needs.create_multi_arch_manifest.outputs.runners_distroless_digest != ''
-    permissions:
-      id-token: write
-      packages: write
-      actions: read
-    uses: slsa-framework/slsa-github-generator/.github/workflows/generator_container_slsa3.yml@f7dd8c54c2067bafc12ca7a55595d5ee9b75204a
-    with:
-      image: ${{ needs.create_multi_arch_manifest.outputs.runners_distroless_image }}
-      digest: ${{ needs.create_multi_arch_manifest.outputs.runners_distroless_digest }}
-      registry-username: ${{ github.actor }}
-    secrets:
-      registry-password: ${{ secrets.GITHUB_TOKEN }}
-
-  # VEX Attestation - Documents which CVEs affect us (security/vex.openvex.json)
-  vex-attestation:
-    name: VEX Attestation
-    needs:
-      [
-        determine-build-context,
-        build-and-push-docker,
-        create_multi_arch_manifest,
-        provenance-n8n,
-        provenance-runners,
-        provenance-runners-distroless,
-      ]
-    if: |
-      always() &&
-      needs.create_multi_arch_manifest.result == 'success' &&
-      (needs.determine-build-context.outputs.release_type == 'stable' ||
-       needs.determine-build-context.outputs.release_type == 'rc' ||
-       needs.determine-build-context.outputs.release_type == 'nightly')
-    runs-on: ubuntu-latest
-    permissions:
-      id-token: write
-      packages: write
-    steps:
-      - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-
-      - name: Install Cosign
-        uses: sigstore/cosign-installer@7e8b541eb2e61bf99390e1afd4be13a184e9ebc5 # v3.10.1
-
-      - name: Login to GHCR
-        uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # v4.0.0
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Attest VEX to n8n image
-        if: needs.create_multi_arch_manifest.outputs.n8n_digest != ''
-        run: |
-          cosign attest --yes \
-            --type openvex \
-            --predicate security/vex.openvex.json \
-            ${{ needs.create_multi_arch_manifest.outputs.n8n_image }}@${{ needs.create_multi_arch_manifest.outputs.n8n_digest }}
-
-      - name: Attest VEX to runners image
-        if: needs.create_multi_arch_manifest.outputs.runners_digest != ''
-        run: |
-          cosign attest --yes \
-            --type openvex \
-            --predicate security/vex.openvex.json \
-            ${{ needs.create_multi_arch_manifest.outputs.runners_image }}@${{ needs.create_multi_arch_manifest.outputs.runners_digest }}
-
-      - name: Attest VEX to runners-distroless image
-        if: needs.create_multi_arch_manifest.outputs.runners_distroless_digest != ''
-        run: |
-          cosign attest --yes \
-            --type openvex \
-            --predicate security/vex.openvex.json \
-            ${{ needs.create_multi_arch_manifest.outputs.runners_distroless_image }}@${{ needs.create_multi_arch_manifest.outputs.runners_distroless_digest }}
-
-  security-scan:
-    name: Security Scan
-    needs: [determine-build-context, build-and-push-docker, create_multi_arch_manifest]
-    if: |
-      success() &&
-      (needs.determine-build-context.outputs.release_type == 'stable' ||
-       needs.determine-build-context.outputs.release_type == 'nightly' ||
-       needs.determine-build-context.outputs.release_type == 'rc')
-    uses: ./.github/workflows/security-trivy-scan-callable.yml
-    with:
-      image_ref: ${{ needs.build-and-push-docker.outputs.image_ref }}
-    secrets: inherit
-
-  security-scan-runners:
-    name: Security Scan (runners)
-    needs: [determine-build-context, build-and-push-docker, create_multi_arch_manifest]
-    if: |
-      success() &&
-      (needs.determine-build-context.outputs.release_type == 'stable' ||
-       needs.determine-build-context.outputs.release_type == 'nightly' ||
-       needs.determine-build-context.outputs.release_type == 'rc')
-    uses: ./.github/workflows/security-trivy-scan-callable.yml
-    with:
-      image_ref: ${{ needs.build-and-push-docker.outputs.runners_primary_ghcr_manifest_tag }}
-    secrets: inherit
-
-  notify-on-failure:
-    name: Notify Cats on nightly build failure
-    runs-on: ubuntu-latest
-    needs: [build-and-push-docker]
-    if: needs.build-and-push-docker.result == 'failure' && github.event_name == 'schedule'
-    steps:
-      - name: Fetch secrets from Infisical
-        uses: Infisical/secrets-action@v1.0.15
-        with:
-          method: oidc
-          identity-id: 436a2630-fad8-475b-8f00-5ab158e9919e
-          project-slug: project-nd-zj
-          env-slug: dev
-          secret-path: /n8n
-
-      - uses: act10ns/slack@44541246747a30eb3102d87f7a4cc5471b0ffb7d # v2.1.0
-        with:
-          status: ${{ needs.build-and-push-docker.result }}
-          channel: '#team-catalysts'
-          webhook-url: ${{ env.SLACK_WEBHOOK_URL }}
-          message: Nightly Docker build failed - ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}

@@ -32,22 +32,15 @@ jobs:
           method: oidc
           identity-id: 436a2630-fad8-475b-8f00-5ab158e9919e
           project-slug: project-nd-zj
-          env-slug: dev
+          env-slug: prod
           secret-path: /n8n
 
-      - name: Generate GitHub App Token
-        id: generate_token
-        uses: actions/create-github-app-token@29824e69f54612133e76f7eaac726eef6c875baf # v2.2.1
-        with:
-          app-id: ${{ env.RELEASE_TAG_MERGE_APP_ID }}
-          private-key: ${{ env.RELEASE_TAG_MERGE_PRIVATE_KEY }}
-          skip-token-revoke: false
-
+      # GITHUB_TOKEN must be stored in Infisical (PAT with contents: write for merge/push).
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           ref: ${{ inputs.target-branch }}
           fetch-depth: 500
-          token: ${{ steps.generate_token.outputs.token }}
+          token: ${{ env.GITHUB_TOKEN }}
 
       - name: Verify release tag exists
         run: |
@@ -67,13 +60,3 @@ jobs:
 
       - name: Push to ${{ inputs.target-branch }}
         run: git push origin "HEAD:${TARGET_BRANCH}"
-
-      - name: Notify Slack on failure
-        if: failure()
-        uses: act10ns/slack@44541246747a30eb3102d87f7a4cc5471b0ffb7d # v2.1.0
-        with:
-          status: ${{ job.status }}
-          channel: '#updates-and-product-releases'
-          webhook-url: ${{ env.SLACK_WEBHOOK_URL }}
-          message: |
-            <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}| Release tag merge to ${{ inputs.target-branch }} failed for n8n@${{ inputs.version }} >

@@ -86,9 +86,11 @@ class BuildContext {
 	}
 
 	buildMatrix(platforms) {
+		// GitHub-hosted labels (replaces Blacksmith-only runners for forks / standard CI).
+		// arm64: requires a pool that offers ubuntu-24.04-arm; if unavailable, use ubuntu-latest + buildx/QEMU or org-specific runners.
 		const runners = {
-			'linux/amd64': 'blacksmith-4vcpu-ubuntu-2204',
-			'linux/arm64': 'blacksmith-4vcpu-ubuntu-2204-arm',
+			'linux/amd64': 'ubuntu-latest',
+			'linux/arm64': 'ubuntu-24.04-arm',
 		};
 
 		const matrix = {

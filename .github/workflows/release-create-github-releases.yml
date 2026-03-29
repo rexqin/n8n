@@ -53,20 +53,14 @@ jobs:
           method: oidc
           identity-id: 436a2630-fad8-475b-8f00-5ab158e9919e
           project-slug: project-nd-zj
-          env-slug: dev
+          env-slug: prod
           secret-path: /n8n
 
-      - name: Generate GitHub App Token
-        id: generate_token
-        uses: actions/create-github-app-token@29824e69f54612133e76f7eaac726eef6c875baf # v2.2.1
-        with:
-          app-id: ${{ env.N8N_ASSISTANT_APP_ID }}
-          private-key: ${{ env.N8N_ASSISTANT_PRIVATE_KEY }}
-
+      # GITHUB_TOKEN must be stored in Infisical (e.g. fine-grained PAT with contents: write for releases).
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
-          token: ${{ steps.generate_token.outputs.token }}
+          token: ${{ env.GITHUB_TOKEN }}
           fetch-depth: 1
 
       - name: Setup NodeJS
@@ -77,7 +71,7 @@ jobs:
 
       - name: Create GitHub releases
         env:
-          GITHUB_TOKEN: ${{ steps.generate_token.outputs.token }}
+          GITHUB_TOKEN: ${{ env.GITHUB_TOKEN }}
           RELEASE_TAG: ${{ inputs.version-tag }}
           BODY: ${{ inputs.body }}
           IS_PRE_RELEASE: ${{ inputs.track == 'beta' }}
