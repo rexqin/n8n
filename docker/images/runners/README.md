@@ -61,10 +61,9 @@ Run in the background (detached):
 docker run -d --rm \
   --name n8n-runners \
   --env-file ./.env.runner \
-  -e N8N_USER_FOLDER=/home/node \
   -v n8n-docker-data:/home/node/.n8n \
   -p 5680:5680 \
-  dolphinux/runners:2.14.4-distroless
+  registry.cn-hangzhou.aliyuncs.com/rexqin/runners:latest
 ```
 
 View logs: `docker logs -f n8n-runners`. Stop: `docker stop n8n-runners`.
