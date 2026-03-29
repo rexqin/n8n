@@ -64,7 +64,7 @@ docker run -d --rm \
   -e N8N_USER_FOLDER=/home/node \
   -v n8n-docker-data:/home/node/.n8n \
   -p 5680:5680 \
-  dolphinux/runners:latest
+  dolphinux/runners:2.14.4-distroless
 ```
 
 View logs: `docker logs -f n8n-runners`. Stop: `docker stop n8n-runners`.

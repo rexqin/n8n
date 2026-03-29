@@ -1,0 +1,39 @@
+{{- /*
+  Infisical CLI: 自定义 dotenv 导出（键值均无引号）
+
+  使用前请替换下面三处占位符（与控制台 Project Settings、环境 slug、文件夹路径一致）：
+  - REPLACE_PROJECT_ID  → 项目 ID（与仓库根目录 .infisical.json 里的 workspaceId 相同）
+  - REPLACE_ENV_SLUG    → 环境 slug，如 dev、staging、prod
+  - REPLACE_FOLDER_PATH → 密钥所在文件夹路径，根目录一般为 "/"
+
+  命令示例（务必显式打开「包含导入的密钥」，否则自定义模板里可能只有本文件夹「直接写入」的密钥）：
+    infisical export \
+      --template=./scripts/infisical/dotenv-no-quotes.tmpl \
+      --env=prod \
+      --include-imports=true \
+      --output-file=./.env.from-infisical
+
+  为什么看不到「导入的」密钥？
+  1) Secret Imports / 跨环境或跨文件夹「导入、链接」的密钥：export 曾长期不包含，需 CLI 支持 --include-imports
+     （见 https://github.com/Infisical/infisical/issues/1015 ）。请用较新 CLI，并加上 --include-imports=true。
+  2) 模板里 secret(..., "<folder>") 只拉取该路径下的密钥集合；若导入挂在项目根目录 "/"，而你写的是 "/n8n"，
+     根目录上的导入项不会出现在 /n8n 的列表里。请在控制台确认导入所在文件夹，与 FOLDER_PATH 一致。
+  3) 若只是「把 .env 文件导入进 Infisical」变成普通 secret，它们应与本目录其他密钥一样出现；若仍没有，
+     先检查环境/路径是否与 UI 一致，再对比：infisical export --format=dotenv --path=... --include-imports=true
+     与模板导出条数是否一致。
+
+  其他说明：
+  - 模板内环境须与 CLI --env 指向的数据一致；若行为不符合预期，参见
+    https://github.com/Infisical/infisical/issues/2246
+  - 默认内置格式 `dotenv` 常为 KEY='value'；本模板为 KEY=value（无引号）
+  - 若某条 secret 的值含换行、未转义的 #、或需保留首尾空格，无引号 dotenv 可能无效
+
+  参考：infisical export --template 与 secret() 函数
+  https://infisical.com/docs/cli/commands/export
+*/ -}}
+{{- $secrets := secret "fd00c18f-a15f-472d-89aa-0b452811489a" "dev" "/n8n" }}
+{{- with $secrets }}
+{{- range . }}
+{{ .Key }}={{ .Value }}
+{{- end }}
+{{- end }}
