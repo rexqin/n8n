@@ -29,7 +29,6 @@ jobs:
           token: ${{ env.GITHUB_TOKEN }}
           fetch-depth: 0
           fetch-tags: true
-          token: ${{ env.GITHUB_TOKEN }}
 
       - name: Setup NodeJS
         uses: ./.github/actions/setup-nodejs
