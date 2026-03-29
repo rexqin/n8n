@@ -44,14 +44,30 @@ pnpm start
 
 ### 4) Start the task runner container
 
+Run in the foreground (interactive):
+
 ```
 docker run --rm -it \
--e N8N_RUNNERS_AUTH_TOKEN=test \
--e N8N_RUNNERS_LAUNCHER_LOG_LEVEL=debug \
--e N8N_RUNNERS_TASK_BROKER_URI=http://host.docker.internal:5679 \
--p 5680:5680 \
-n8nio/runners
+  --env-file ./.env \
+  -e N8N_USER_FOLDER=/home/node \
+  -v n8n-docker-data:/home/node/.n8n \
+  -p 5680:5680 \
+  dolphinux/runners:latest
 ```
+
+Run in the background (detached):
+
+```
+docker run -d --rm \
+  --name n8n-runners \
+  --env-file ./.env \
+  -e N8N_USER_FOLDER=/home/node \
+  -v n8n-docker-data:/home/node/.n8n \
+  -p 5680:5680 \
+  dolphinux/runners:latest
+```
+
+View logs: `docker logs -f n8n-runners`. Stop: `docker stop n8n-runners`.
 
 If you need to add extra dependencies (custom image), follow [these instructions](https://docs.n8n.io/hosting/configuration/task-runners/#adding-extra-dependencies).
 
