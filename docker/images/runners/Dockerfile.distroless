@@ -1,17 +1,13 @@
 # ==============================================================================
-# DISTROLESS RUNNERS IMAGE
+# DEBIAN (GLIBC) RUNNERS IMAGE — Playwright / Chromium enabled
 # ==============================================================================
-# This is a distroless variant of docker/images/runners/Dockerfile, intended
-# for cloud deployments. It removes package managers and most system utilities
-# for security hardening. /bin/sh (dash) + its Debian 12 libs are copied in for
-# docker exec / debugging; the image otherwise stays non-interactive by default.
+# Full Debian 12 (bookworm-slim) runtime with apt, tini, and OS packages required
+# for Playwright Chromium. Not distroless: larger surface, better browser support.
 #
-# Key differences:
-# - Uses Debian-based builders (glibc instead of musl)
-# - Final image is Google's distroless/cc-debian12
-# - Extra runtime-prep stage to organize filesystem
-# - Uses distroless nonroot user (UID 65532)
-# - dash (/bin/sh) copied from bookworm + ldd deps (for exec/debug); still no apt/pkg manager
+# Builders align on glibc (bookworm): JavaScript runner, Python runner (+ uv,
+# --all-extras, playwright install chromium in build), launcher, Node copy.
+# Final stage runs `playwright install-deps chromium` so system libraries match
+# the bundled browsers under PLAYWRIGHT_BROWSERS_PATH.
 # ==============================================================================
 
 ARG NODE_VERSION=24.13.1
@@ -86,7 +82,6 @@ COPY packages/@n8n/task-runner-python/pyproject.toml \
     ./
 
 RUN uv venv
-# Full optional set: sentry + browser (playwright/pydoll) for cloud/distroless image only
 RUN uv sync \
     --frozen \
     --no-editable \
@@ -101,7 +96,6 @@ RUN uv sync \
     --all-extras \
     --no-editable
 
-# Install the python runner package itself into site packages. We can remove the src directory then
 RUN uv pip install . && rm -rf /app/task-runner-python/src
 RUN PLAYWRIGHT_BROWSERS_PATH=/app/task-runner-python/.playwright-browsers \
     /app/task-runner-python/.venv/bin/playwright install --with-deps chromium
@@ -136,99 +130,63 @@ RUN set -e; \
 FROM node:${NODE_VERSION}-bookworm-slim AS node-debian
 
 # ==============================================================================
-# STAGE 5: Runtime preparation
+# STAGE 5: Runtime (Debian bookworm + Playwright Chromium deps)
 # ==============================================================================
-# Prepare a clean filesystem structure with all necessary files before
-# copying to the distroless base. This stage runs with a shell so we can
-# create symlinks and organize files properly.
-# ==============================================================================
-FROM debian:bookworm-slim AS runtime-prep
-
-# Copy Python runtime
-COPY --from=python-runner-builder /usr/local/bin/python3.13 /runtime/usr/local/bin/python3.13
-COPY --from=python-runner-builder /usr/local/lib/python3.13 /runtime/usr/local/lib/python3.13
-COPY --from=python-runner-builder /usr/local/lib/libpython3.13.so* /runtime/usr/local/lib/
-
-# Copy Python dependencies (architecture-specific directories)
-# The /* glob will match x86_64-linux-gnu or aarch64-linux-gnu
-COPY --from=python-runner-builder /lib/*-linux-gnu* /runtime/lib/
-COPY --from=python-runner-builder /usr/lib/*-linux-gnu* /runtime/usr/lib/
-
-# Copy Node.js runtime
-COPY --from=node-debian /usr/local/bin/node /runtime/usr/local/bin/node
-
-# Copy task runners
-COPY --from=javascript-runner-builder /app/task-runner-javascript /runtime/opt/runners/task-runner-javascript
-COPY --from=python-runner-builder /app/task-runner-python /runtime/opt/runners/task-runner-python
-
-# Copy launcher
-COPY --from=launcher-downloader /launcher-bin/* /runtime/usr/local/bin/
-
-# Copy configuration
-COPY docker/images/runners/n8n-task-runners.json /runtime/etc/n8n-task-runners.json
-
-# dash (/bin/sh) + dynamic libs (Debian bookworm, matches cc-debian12) for docker exec / ops.
-# Distroless base has no shell; without this, `docker exec … sh` cannot work.
-RUN apt-get update && apt-get install -y --no-install-recommends dash && \
-    mkdir -p /runtime/bin && \
-    cp /bin/dash /runtime/bin/dash && \
-    chmod +x /runtime/bin/dash && \
-    ln -sf dash /runtime/bin/sh && \
-    set -eux; \
-    ldd /bin/dash | sed -n 's/.*=> \([^ ]*\) (.*/\1/p' | while read -r lib; do \
-      if [ -n "$lib" ] && [ -f "$lib" ]; then \
-        mkdir -p "/runtime$(dirname "$lib")"; \
-        cp -L "$lib" "/runtime$lib"; \
-      fi; \
-    done; \
-    ldd /bin/dash | awk '$1 ~ /^\// {print $1}' | while read -r lib; do \
-      if [ -n "$lib" ] && [ -f "$lib" ]; then \
-        mkdir -p "/runtime$(dirname "$lib")"; \
-        cp -L "$lib" "/runtime$lib"; \
-      fi; \
-    done; \
-    apt-get clean && rm -rf /var/lib/apt/lists/*
-
-# Create necessary directories with proper permissions
-RUN mkdir -p /runtime/home/runner && \
-    chmod 755 /runtime/home/runner && \
-    chmod +x /runtime/usr/local/bin/*
-
-# ==============================================================================
-# STAGE 6: Distroless Runtime
-# ==============================================================================
-# Uses Google's distroless/cc-debian12 which provides:
-# - glibc, libgcc, libstdc++
-# - CA certificates
-# - Timezone data
-# - nonroot user (UID 65532)
-# - NO package manager, NO apt; /bin/sh (dash) is added via runtime-prep (see above)
-# ==============================================================================
-FROM gcr.io/distroless/cc-debian12:latest AS runtime
+FROM debian:bookworm-slim AS runtime
 ARG N8N_VERSION=snapshot
 ARG N8N_RELEASE_TYPE=dev
 
 ENV NODE_ENV=production \
     N8N_RELEASE_TYPE=${N8N_RELEASE_TYPE} \
-    PLAYWRIGHT_BROWSERS_PATH=/app/task-runner-python/.playwright-browsers \
+    PLAYWRIGHT_BROWSERS_PATH=/opt/runners/task-runner-python/.playwright-browsers \
     HOME=/home/runner \
     SHELL=/bin/sh
 
-# Copy everything from the prepared runtime filesystem
-COPY --from=runtime-prep --chown=root:root /runtime/ /
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates \
+    tini \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
+
+COPY --from=python-runner-builder /usr/local/bin/uv /usr/local/bin/uv
+
+COPY --from=python-runner-builder /usr/local/bin/python3.13 /usr/local/bin/python3.13
+RUN ln -sf python3.13 /usr/local/bin/python3 && ln -sf python3.13 /usr/local/bin/python
+COPY --from=python-runner-builder /usr/local/lib/python3.13 /usr/local/lib/python3.13
+COPY --from=python-runner-builder /usr/local/lib/libpython3.13.so* /usr/local/lib/
+COPY --from=python-runner-builder /lib/*-linux-gnu* /lib/
+COPY --from=python-runner-builder /usr/lib/*-linux-gnu* /usr/lib/
+
+COPY --from=node-debian /usr/local/bin/node /usr/local/bin/node
+COPY --from=node-debian /usr/local/lib/node_modules/corepack /usr/local/lib/node_modules/corepack
+RUN ln -sf ../lib/node_modules/corepack/dist/corepack.js /usr/local/bin/corepack && \
+    ln -sf ../lib/node_modules/corepack/dist/pnpm.js /usr/local/bin/pnpm
+
+COPY --from=javascript-runner-builder /app/task-runner-javascript /opt/runners/task-runner-javascript
+COPY --from=python-runner-builder /app/task-runner-python /opt/runners/task-runner-python
+COPY --from=launcher-downloader /launcher-bin/* /usr/local/bin/
+COPY docker/images/runners/n8n-task-runners.json /etc/n8n-task-runners.json
+
+# OS libraries for the Chromium build shipped with Playwright (builder --with-deps is not enough alone)
+RUN apt-get update && \
+    /opt/runners/task-runner-python/.venv/bin/playwright install-deps chromium && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
+
+RUN groupadd --gid 1000 runner && \
+    useradd --uid 1000 --gid runner --create-home --home-dir /home/runner runner && \
+    chmod +x /usr/local/bin/task-runner-launcher && \
+    chown -R runner:runner /home/runner /opt/runners
 
 WORKDIR /home/runner
 
-# Switch to nonroot user (UID 65532)
-USER 65532:65532
+USER runner:runner
 
 EXPOSE 5680/tcp
 
-ENTRYPOINT ["/usr/local/bin/task-runner-launcher"]
+ENTRYPOINT ["tini", "--", "/usr/local/bin/task-runner-launcher"]
 CMD ["javascript", "python"]
 
-LABEL org.opencontainers.image.title="n8n task runners (distroless)" \
-    org.opencontainers.image.description="Distroless sidecar image providing n8n task runners for JavaScript and Python code execution" \
+LABEL org.opencontainers.image.title="n8n task runners (Debian, Playwright)" \
+    org.opencontainers.image.description="Sidecar image with n8n task runners (JS/Python), glibc, and Playwright Chromium" \
     org.opencontainers.image.source="https://github.com/n8n-io/n8n" \
     org.opencontainers.image.url="https://n8n.io" \
     org.opencontainers.image.version="${N8N_VERSION}"
