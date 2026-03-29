@@ -42,18 +42,11 @@ jobs:
           env-slug: dev
           secret-path: /n8n
 
-      - name: Generate GitHub App Token
-        id: generate_token
-        uses: actions/create-github-app-token@29824e69f54612133e76f7eaac726eef6c875baf # v2.2.1
-        with:
-          app-id: ${{ env.RELEASE_TAG_MERGE_APP_ID }}
-          private-key: ${{ env.RELEASE_TAG_MERGE_PRIVATE_KEY }}
-          skip-token-revoke: false
-
+      # GITHUB_TOKEN must be stored in Infisical (PAT with contents: write for tag push).
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
-          token: ${{ steps.generate_token.outputs.token }}
+          token: ${{ env.GITHUB_TOKEN }}
           # We can manage with a shallow clone, since `ensureTagExists` in github-helpers.mjs
           # does a targeted fetch for the tags it needs.
           fetch-depth: 1
