@@ -1,3 +1,11 @@
+## [2.14.9](https://github.com/rexqin/n8n/compare/n8n@2.14.9...n8n@2.14.9) (2026-03-29)
+
+
+### Bug Fixes
+
+* **docker:** runners 镜像 Playwright 用 python -m；构建阶段仅下载 Chromium ([0f577d8](https://github.com/rexqin/n8n/commit/0f577d8914bd1739e7bf48aaed001714a5d75157))
+
+
 ## [2.14.8](https://github.com/rexqin/n8n/compare/n8n@2.14.4...n8n@2.14.8) (2026-03-29)
 
 
