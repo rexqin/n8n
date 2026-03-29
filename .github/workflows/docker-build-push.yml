@@ -1,7 +1,7 @@
-# This workflow is used to build and push the Docker image for n8nio/n8n and n8nio/runners
+# Build and push n8n + task runners images to Aliyun ACR (no Docker Hub).
 #
-# - Uses docker-config.mjs for context determination, this determines what needs to be built based on the trigger
-# - Uses docker-tags.mjs for tag generation, this generates the tags for the images
+# - docker-config.mjs: build matrix and release context
+# - docker-tags.mjs: per-platform image tags for ACR
 
 name: 'Docker: Build and Push'
 
@@ -47,7 +47,6 @@ jobs:
       release_type: ${{ steps.context.outputs.release_type }}
       n8n_version: ${{ steps.context.outputs.version }}
       push_enabled: ${{ steps.context.outputs.push_enabled }}
-      push_to_docker: ${{ steps.context.outputs.push_to_docker }}
       build_matrix: ${{ steps.context.outputs.build_matrix }}
     steps:
       - name: Checkout code
@@ -110,7 +109,6 @@ jobs:
             --all \
             --version "${{ needs.determine-build-context.outputs.n8n_version }}" \
             --platform "${{ matrix.docker_platform }}" \
-            ${{ needs.determine-build-context.outputs.push_to_docker == 'true' && '--include-docker' || '' }} \
             ${{ needs.determine-build-context.outputs.push_enabled == 'true' && '--include-aliyun' || '' }}
 
           echo "=== Generated Docker Tags ==="
@@ -178,15 +176,6 @@ jobs:
           test -n "${ACR_USERNAME:-}" || { echo "::error::Missing ACR_USERNAME from Infisical"; exit 1; }
           test -n "${ACR_PASSWORD:-}" || { echo "::error::Missing ACR_PASSWORD from Infisical"; exit 1; }
 
-      - name: Login to Docker registries
-        if: needs.determine-build-context.outputs.push_enabled == 'true'
-        uses: ./.github/actions/docker-registry-login
-        with:
-          login-ghcr: false
-          login-dockerhub: ${{ needs.determine-build-context.outputs.push_to_docker == 'true' }}
-          dockerhub-username: ${{ env.DOCKER_USERNAME }}
-          dockerhub-password: ${{ env.DOCKER_PASSWORD }}
-
       - name: Login to Aliyun ACR
         if: needs.determine-build-context.outputs.push_enabled == 'true'
         uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # v4.0.0
@@ -236,44 +225,12 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd # v4.0.0
 
-      - name: Login to Docker registries
-        uses: ./.github/actions/docker-registry-login
-        with:
-          login-ghcr: false
-          login-dockerhub: ${{ needs.determine-build-context.outputs.push_to_docker == 'true' }}
-          dockerhub-username: ${{ env.DOCKER_USERNAME }}
-          dockerhub-password: ${{ env.DOCKER_PASSWORD }}
-
       - name: Login to Aliyun ACR
         uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # v4.0.0
         with:
           registry: ${{ env.ACR_REGISTRY }}
           username: ${{ env.ACR_USERNAME }}
           password: ${{ env.ACR_PASSWORD }}
-
-      - name: Create Docker Hub manifests
-        if: needs.determine-build-context.outputs.push_to_docker == 'true'
-        run: |
-          VERSION="${{ needs.determine-build-context.outputs.n8n_version }}"
-          DOCKER_BASE="${{ env.DOCKER_USERNAME }}"
-
-          # Create manifests for each image type
-          declare -A images=(
-            ["n8n"]="${VERSION}"
-            ["runners"]="${VERSION}"
-            ["runners-distroless"]="${VERSION}-distroless"
-          )
-
-          for image in "${!images[@]}"; do
-            TAG_SUFFIX="${images[$image]}"
-            IMAGE_NAME="${image//-distroless/}"  # Remove -distroless from image name
-
-            echo "Creating Docker Hub manifest for $image"
-            docker buildx imagetools create \
-              --tag "${DOCKER_BASE}/${IMAGE_NAME}:${TAG_SUFFIX}" \
-              "${DOCKER_BASE}/${IMAGE_NAME}:${TAG_SUFFIX}-amd64" \
-              "${DOCKER_BASE}/${IMAGE_NAME}:${TAG_SUFFIX}-arm64"
-          done
 
       - name: Create Aliyun ACR manifests
         run: |

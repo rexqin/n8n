@@ -13,19 +13,16 @@ class BuildContext {
 			release_type: '',
 			platforms: ['linux/amd64', 'linux/arm64'],
 			push_to_ghcr: true,
-			push_to_docker: false,
 		};
 
 		if (version && releaseType) {
 			context.version = version;
 			context.release_type = releaseType;
-			context.push_to_docker = true;
 		} else {
 			switch (event) {
 				case 'schedule':
 					context.version = 'nightly';
 					context.release_type = 'nightly';
-					context.push_to_docker = true;
 					break;
 
 				case 'pull_request':
@@ -44,7 +41,6 @@ class BuildContext {
 					if (branch === 'master') {
 						context.version = 'dev';
 						context.release_type = 'dev';
-						context.push_to_docker = true;
 					} else {
 						context.version = `branch-${this.sanitizeBranch(branch)}`;
 						context.release_type = 'branch';
@@ -57,7 +53,6 @@ class BuildContext {
 					if (!version) throw new Error('Version required for release');
 					context.version = version;
 					context.release_type = releaseType || 'stable';
-					context.push_to_docker = true;
 					break;
 
 				default:
@@ -120,7 +115,6 @@ class BuildContext {
 				`release_type=${context.release_type}`,
 				`platforms=${JSON.stringify(context.platforms)}`,
 				`push_to_ghcr=${context.push_to_ghcr}`,
-				`push_to_docker=${context.push_to_docker}`,
 				`push_enabled=${context.push_enabled}`,
 				`build_matrix=${JSON.stringify(buildMatrix)}`,
 			];
@@ -164,7 +158,6 @@ if (import.meta.url === `file://${process.argv[1]}`) {
 			console.log(`release_type: ${result.release_type}`);
 			console.log(`platforms: ${JSON.stringify(result.platforms, null, 2)}`);
 			console.log(`push_to_ghcr: ${result.push_to_ghcr}`);
-			console.log(`push_to_docker: ${result.push_to_docker}`);
 			console.log(`push_enabled: ${result.push_enabled}`);
 			console.log('build_matrix:', JSON.stringify(matrix, null, 2));
 		}

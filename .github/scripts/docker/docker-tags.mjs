@@ -4,13 +4,12 @@ import { appendFileSync } from 'node:fs';
 
 class TagGenerator {
 	constructor() {
-		this.dockerUsername = process.env.DOCKER_USERNAME || 'n8nio';
 		this.acrRegistry = process.env.ACR_REGISTRY || '';
 		this.acrNamespace = process.env.ACR_NAMESPACE || '';
 		this.githubOutput = process.env.GITHUB_OUTPUT || null;
 	}
 
-	generate({ image, version, platform, includeDockerHub = false, includeAliyun = false }) {
+	generate({ image, version, platform, includeAliyun = false }) {
 		let imageName = image;
 		let versionSuffix = '';
 
@@ -28,22 +27,20 @@ class TagGenerator {
 				: [];
 
 		const tags = {
-			docker: includeDockerHub ? [`dolphinux/${imageName}:${fullVersion}`] : [],
 			aliyun,
 		};
 
-		tags.all = [...tags.docker, ...tags.aliyun];
+		tags.all = [...tags.aliyun];
 		return tags;
 	}
 
 	output(tags, prefix = '') {
 		if (this.githubOutput) {
 			const prefixStr = prefix ? `${prefix}_` : '';
-			const primarySource = tags.docker[0] || tags.aliyun[0] || '';
+			const primarySource = tags.aliyun[0] || '';
 			const primaryTag = primarySource ? primarySource.replace(/-amd64$|-arm64$/, '') : '';
 			const outputs = [
 				`${prefixStr}tags=${tags.all.join(',')}`,
-				`${prefixStr}docker_tag=${tags.docker[0] || ''}`,
 				`${prefixStr}aliyun_tag=${tags.aliyun[0] || ''}`,
 				`${prefixStr}primary_tag=${primaryTag}`,
 			];
@@ -53,12 +50,12 @@ class TagGenerator {
 		}
 	}
 
-	generateAll({ version, platform, includeDockerHub = false, includeAliyun = false }) {
+	generateAll({ version, platform, includeAliyun = false }) {
 		const images = ['n8n', 'runners', 'runners-distroless'];
 		const results = {};
 
 		for (const image of images) {
-			const tags = this.generate({ image, version, platform, includeDockerHub, includeAliyun });
+			const tags = this.generate({ image, version, platform, includeAliyun });
 			const prefix = image.replace('-distroless', '_distroless');
 			results[prefix] = tags;
 
@@ -92,7 +89,6 @@ if (import.meta.url === `file://${process.argv[1]}`) {
 			const results = generator.generateAll({
 				version,
 				platform: getArg('platform'),
-				includeDockerHub: hasFlag('include-docker'),
 				includeAliyun: hasFlag('include-aliyun'),
 			});
 			if (!generator.githubOutput) {
@@ -108,7 +104,6 @@ if (import.meta.url === `file://${process.argv[1]}`) {
 				image,
 				version,
 				platform: getArg('platform'),
-				includeDockerHub: hasFlag('include-docker'),
 				includeAliyun: hasFlag('include-aliyun'),
 			});
 			generator.output(tags);
