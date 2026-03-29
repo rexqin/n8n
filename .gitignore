@@ -10,6 +10,7 @@ google-generated-credentials.json
 _START_PACKAGE
 .env
 .env.local
+.env.runner
 .vscode/*
 !.claude
 !.vscode/extensions.json

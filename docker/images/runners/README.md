@@ -48,7 +48,7 @@ Run in the foreground (interactive):
 
 ```
 docker run --rm -it \
-  --env-file ./.env \
+  --env-file ./.env.runner \
   -e N8N_USER_FOLDER=/home/node \
   -v n8n-docker-data:/home/node/.n8n \
   -p 5680:5680 \
@@ -60,7 +60,7 @@ Run in the background (detached):
 ```
 docker run -d --rm \
   --name n8n-runners \
-  --env-file ./.env \
+  --env-file ./.env.runner \
   -e N8N_USER_FOLDER=/home/node \
   -v n8n-docker-data:/home/node/.n8n \
   -p 5680:5680 \
