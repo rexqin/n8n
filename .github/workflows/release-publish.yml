@@ -90,25 +90,25 @@ jobs:
           cp README.md packages/cli/README.md
           sed -i "s/default: 'dev'/default: '${{ needs.determine-version-info.outputs.release_type }}'/g" packages/cli/dist/config/schema.js
 
-      # - name: Publish n8n to NPM with rc tag
-      #   env:
-      #     PUBLISH_BRANCH: ${{ github.event.pull_request.base.ref }}
-      #   run: pnpm --filter n8n publish --publish-branch "$PUBLISH_BRANCH" --access public --tag rc --no-git-checks
+      - name: Publish n8n to NPM with rc tag
+        env:
+          PUBLISH_BRANCH: ${{ github.event.pull_request.base.ref }}
+        run: pnpm --filter n8n publish --publish-branch "$PUBLISH_BRANCH" --access public --tag rc --no-git-checks
 
-      # - name: Publish other packages to NPM
-      #   env:
-      #     PUBLISH_BRANCH: ${{ github.event.pull_request.base.ref }}
-      #     PUBLISH_TAG: ${{ needs.determine-version-info.outputs.track == 'stable' && 'latest' || needs.determine-version-info.outputs.track }}
-      #   run: |
-      #     # Prefix version-like track names (e.g. "1", "v1") to avoid npm rejecting them as semver ranges
-      #     if [[ "$PUBLISH_TAG" =~ ^v?[0-9] ]]; then
-      #       PUBLISH_TAG="release-${PUBLISH_TAG}"
-      #     fi
-      #     pnpm publish -r --filter '!n8n' --publish-branch "$PUBLISH_BRANCH" --access public --tag "$PUBLISH_TAG" --no-git-checks
+      - name: Publish other packages to NPM
+        env:
+          PUBLISH_BRANCH: ${{ github.event.pull_request.base.ref }}
+          PUBLISH_TAG: ${{ needs.determine-version-info.outputs.track == 'stable' && 'latest' || needs.determine-version-info.outputs.track }}
+        run: |
+          # Prefix version-like track names (e.g. "1", "v1") to avoid npm rejecting them as semver ranges
+          if [[ "$PUBLISH_TAG" =~ ^v?[0-9] ]]; then
+            PUBLISH_TAG="release-${PUBLISH_TAG}"
+          fi
+          pnpm publish -r --filter '!n8n' --publish-branch "$PUBLISH_BRANCH" --access public --tag "$PUBLISH_TAG" --no-git-checks
 
-      # - name: Cleanup rc tag
-      #   run: npm dist-tag rm n8n rc
-      #   continue-on-error: true
+      - name: Cleanup rc tag
+        run: npm dist-tag rm n8n rc
+        continue-on-error: true
 
   publish-to-docker-hub:
     name: Publish to DockerHub
@@ -121,6 +121,18 @@ jobs:
     with:
       n8n_version: ${{ needs.determine-version-info.outputs.version }}
       release_type: ${{ needs.determine-version-info.outputs.release_type }}
+    secrets: inherit
+
+  deploy-aliyun-ecs:
+    name: Deploy to Aliyun ECS
+    needs: [determine-version-info, publish-to-docker-hub]
+    if: github.event.pull_request.merged == true
+    permissions:
+      contents: read
+      id-token: write
+    uses: ./.github/workflows/deploy-aliyun-ecs.yml
+    with:
+      n8n_version: ${{ needs.determine-version-info.outputs.version }}
     secrets: inherit
 
   create-github-release:
