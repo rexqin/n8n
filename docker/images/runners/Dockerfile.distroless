@@ -97,8 +97,9 @@ RUN uv sync \
     --no-editable
 
 RUN uv pip install . && rm -rf /app/task-runner-python/src
+# Browser download only; OS deps for Chromium are installed in the runtime stage.
 RUN PLAYWRIGHT_BROWSERS_PATH=/app/task-runner-python/.playwright-browsers \
-    /app/task-runner-python/.venv/bin/playwright install --with-deps chromium
+    /app/task-runner-python/.venv/bin/python -m playwright install chromium
 
 # ==============================================================================
 # STAGE 3: Task Runner Launcher download
@@ -168,7 +169,8 @@ COPY docker/images/runners/n8n-task-runners.json /etc/n8n-task-runners.json
 
 # OS libraries for the Chromium build shipped with Playwright (builder --with-deps is not enough alone)
 RUN apt-get update && \
-    /opt/runners/task-runner-python/.venv/bin/playwright install-deps chromium && \
+    # Use the venv's python module entrypoint instead of relying on a `playwright` binary script.
+    /opt/runners/task-runner-python/.venv/bin/python -m playwright install --with-deps chromium && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
 RUN groupadd --gid 1000 runner && \
