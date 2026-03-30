@@ -74,7 +74,7 @@ jobs:
           project-slug: project-nd-zj
           env-slug: prod
           export-type: file
-          file-output-path: /.env
+          file-output-path: ${{ github.workspace }}/.env
           secret-path: /n8n
 
       - name: Fetch secrets from Infisical runner
@@ -85,7 +85,7 @@ jobs:
           project-slug: project-nd-zj
           env-slug: prod
           export-type: file
-          file-output-path: /.env.runner
+          file-output-path: ${{ github.workspace }}/.env.runner
           secret-path: /n8n/runner
 
       - name: Validate required secrets
