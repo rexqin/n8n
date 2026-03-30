@@ -9,11 +9,6 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-# Browser automation (manylinux wheels; install in docker/images/runners/Dockerfile.distroless only by default)
-browser = [
-    "playwright>=1.55.0",
-    "pydoll-python>=2.21.0",
-]
 sentry = ["sentry-sdk>=2.35.2"]
 
 [tool.uv]

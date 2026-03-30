@@ -11,7 +11,7 @@ in the [Code Node](https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes
 
 For official documentation, please see [here](https://docs.n8n.io/hosting/configuration/task-runners/).
 
-For a Debian (glibc) variant with Playwright/Chromium and full apt-based runtime, see [here](./Dockerfile.distroless).
+For a distroless variant of this image, see [here](./Dockerfile.distroless).
 
 For development purposes only, see below.
 

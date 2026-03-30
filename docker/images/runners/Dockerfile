@@ -66,7 +66,7 @@ COPY packages/@n8n/task-runner-python/pyproject.toml \
     ./
 
 RUN uv venv
-# Omit optional "browser" (playwright/pydoll); those deps are installed only in Dockerfile.distroless
+# Optional extras: sentry only (see pyproject.toml)
 RUN uv sync \
     --frozen \
     --no-editable \
