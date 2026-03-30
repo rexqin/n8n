@@ -26,8 +26,9 @@ inputs:
 runs:
   using: 'composite'
   steps:
+    # v5+ runs on Node.js 24 (GitHub deprecation of node20 actions). See pnpm/action-setup#205.
     - name: Setup pnpm
-      uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4.3.0
+      uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5.0.0
 
     - name: Setup Node.js
       uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
@@ -68,6 +69,7 @@ runs:
       run: safe-chain teardown
       shell: bash
 
+    # Upstream still declares `using: node20`; GitHub may warn until rharkor/caching-for-turbo ships node24.
     - name: Configure Turborepo Cache
       uses: rharkor/caching-for-turbo@0abc2381e688c4d2832f0665a68a01c6e82f0d6c # v2.3.11
 
