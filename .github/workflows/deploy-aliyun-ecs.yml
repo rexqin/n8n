@@ -161,6 +161,7 @@ jobs:
           N8N_VERSION="$VERSION" docker compose -f docker-compose.yml pull
           N8N_VERSION="$VERSION" docker compose -f docker-compose.yml up -d --remove-orphans
           docker compose ps
+          docker image prune -f
           REMOTE
 
       - name: Cleanup SSH key
