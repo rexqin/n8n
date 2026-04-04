@@ -11,6 +11,7 @@ function main() {
 		ensureEnvVar('TRACK')
 	);
 
+	console.log('track', track);
 	const currentTag = resolveReleaseTagForTrack(track);
 
 	const releaseCandidateBranch = resolveRcBranchForTrack(track);
