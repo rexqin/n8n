@@ -54,9 +54,24 @@ jobs:
       release_type: ${{ needs.determine-version-info.outputs.release_type }}
     secrets: inherit
 
+  create-github-release:
+    name: Create GitHub Release
+    needs: [determine-version-info, publish-to-aliyun-acr]
+    if: github.event.pull_request.merged == true
+    permissions:
+      contents: write
+      id-token: write
+    uses: ./.github/workflows/release-create-github-releases.yml
+    with:
+      track: ${{ needs.determine-version-info.outputs.track }}
+      version-tag: "n8n@${{ needs.determine-version-info.outputs.version }}"
+      body: ${{ github.event.pull_request.body }}
+      commit: ${{ github.event.pull_request.base.ref }}
+    secrets: inherit
+
   move-track-tag:
     name: Move track tag
-    needs: [determine-version-info]
+    needs: [determine-version-info, create-github-release]
     if: github.event.pull_request.merged == true
     permissions:
       contents: write
@@ -69,7 +84,7 @@ jobs:
 
   promote-stable-tag:
     name: Promote stable tag (minor bump)
-    needs: [determine-version-info]
+    needs: [determine-version-info, create-github-release]
     if: |
       github.event.pull_request.merged == true &&
       needs.determine-version-info.outputs.new_stable_version != ''
@@ -84,7 +99,7 @@ jobs:
 
   merge-release-tag-to-master:
     name: Merge release tag to master on minor release
-    needs: [determine-version-info]
+    needs: [determine-version-info, create-github-release]
     if: |
       github.event.pull_request.merged == true &&
       needs.determine-version-info.outputs.bump == 'minor' &&
@@ -100,7 +115,7 @@ jobs:
 
   merge-release-tag-to-rc-branch:
     name: Merge release tag to RC branch on patch release
-    needs: [determine-version-info]
+    needs: [determine-version-info, create-github-release]
     if: |
       github.event.pull_request.merged == true &&
       needs.determine-version-info.outputs.bump == 'patch' &&
@@ -119,6 +134,7 @@ jobs:
     needs:
       [
         determine-version-info,
+        create-github-release,
         move-track-tag,
         promote-stable-tag,
       ]
@@ -144,7 +160,13 @@ jobs:
   # ACR 的 latest/stable 指针在 post-release → release-push-to-channel 中打上；ECS 需在之后部署
   deploy-aliyun-ecs:
     name: Deploy to Aliyun ECS
-    needs: [determine-version-info, publish-to-aliyun-acr, post-release]
+    needs:
+      [
+        determine-version-info,
+        create-github-release,
+        publish-to-aliyun-acr,
+        post-release,
+      ]
     if: github.event.pull_request.merged == true && needs.post-release.result == 'success'
     permissions:
       contents: read
