@@ -2,6 +2,7 @@ import type { RouterMiddleware } from '@/app/types/router';
 import { VIEWS } from '@/app/constants';
 import type { AuthenticatedPermissionOptions } from '@/app/types/rbac';
 import { isAuthenticated, shouldEnableMfa } from '@/app/utils/rbac/checks';
+import { useSSOStore } from '@/features/settings/sso/sso.store';
 
 export const authenticatedMiddleware: RouterMiddleware<AuthenticatedPermissionOptions> = async (
 	to,
@@ -17,6 +18,22 @@ export const authenticatedMiddleware: RouterMiddleware<AuthenticatedPermissionOp
 
 	const valid = isAuthenticated(options);
 	if (!valid) {
+		const ssoStore = useSSOStore();
+		if (ssoStore.showSsoLoginButton) {
+			try {
+				const samlRedirectHint =
+					typeof to.query?.redirect === 'string' ? to.query.redirect : redirect;
+				const redirectUrl = ssoStore.isDefaultAuthenticationSaml
+					? await ssoStore.getSSORedirectUrl(samlRedirectHint)
+					: ssoStore.oidc.loginUrl;
+				if (redirectUrl) {
+					window.location.href = redirectUrl;
+					return next(false);
+				}
+			} catch {
+				// Fall through to sign-in page (same as SSOLogin error handling without blocking navigation).
+			}
+		}
 		return next({ name: VIEWS.SIGNIN, query: { redirect } });
 	}
 
