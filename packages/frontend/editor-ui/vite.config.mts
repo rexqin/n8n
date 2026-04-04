@@ -218,6 +218,23 @@ const plugins: UserConfig['plugins'] = [
 
 const target = browserslistToEsbuild(browsers);
 
+/** 开发模式下允许通过反向代理域名访问（否则 Host 非 localhost 会 Blocked request） */
+const devServer: UserConfig['server'] | undefined =
+	NODE_ENV === 'development'
+		? {
+				allowedHosts: true,
+				...(process.env.VITE_DEV_HMR_HOST
+					? {
+							hmr: {
+								host: process.env.VITE_DEV_HMR_HOST,
+								protocol: (process.env.VITE_DEV_HMR_PROTOCOL as 'ws' | 'wss') ?? 'wss',
+								clientPort: Number(process.env.VITE_DEV_HMR_CLIENT_PORT) || 443,
+							},
+						}
+					: {}),
+			}
+		: undefined;
+
 export default mergeConfig(
 	defineConfig({
 		define: {
@@ -255,6 +272,7 @@ export default mergeConfig(
 		worker: {
 			format: 'es',
 		},
+		...(devServer ? { server: devServer } : {}),
 	}),
 	vitestConfig,
 );

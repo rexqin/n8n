@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, reactive, ref } from 'vue';
+import { computed, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
 import AuthView from './AuthView.vue';
@@ -51,7 +51,8 @@ const emailLabel = computed(() => {
 	return label;
 });
 
-const formConfig: IFormBoxConfig = reactive({
+// Use computed so locale HMR (i18nVersion) re-runs baseText; reactive() would freeze initial strings.
+const formConfig = computed<IFormBoxConfig>(() => ({
 	title: locale.baseText('auth.signin'),
 	buttonText: locale.baseText('auth.signin'),
 	redirectText: locale.baseText('forgotPassword'),
@@ -84,7 +85,7 @@ const formConfig: IFormBoxConfig = reactive({
 			},
 		},
 	],
-});
+}));
 
 const onMFASubmitted = async (form: MfaCodeOrMfaRecoveryCode) => {
 	await login({
