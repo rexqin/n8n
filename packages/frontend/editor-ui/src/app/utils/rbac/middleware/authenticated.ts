@@ -24,7 +24,7 @@ export const authenticatedMiddleware: RouterMiddleware<AuthenticatedPermissionOp
 				const samlRedirectHint =
 					typeof to.query?.redirect === 'string' ? to.query.redirect : redirect;
 				const redirectUrl = ssoStore.isDefaultAuthenticationSaml
-					? await ssoStore.getSSORedirectUrl(samlRedirectHint)
+					? await ssoStore.getSSORedirectUrl(samlRedirectHint as string)
 					: ssoStore.oidc.loginUrl;
 				if (redirectUrl) {
 					window.location.href = redirectUrl;
