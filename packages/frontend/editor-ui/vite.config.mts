@@ -160,7 +160,7 @@ const plugins: UserConfig['plugins'] = [
 			return ctx.server
 				? html
 						.replace('%CONFIG_TAGS%', '')
-						.replaceAll('/{{BASE_PATH}}', '//localhost:5678')
+						.replaceAll('/{{BASE_PATH}}', '//brain.ibb8.store')
 						.replaceAll('/{{REST_ENDPOINT}}', '/rest')
 				: html;
 		},
