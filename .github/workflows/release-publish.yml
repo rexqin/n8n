@@ -161,13 +161,8 @@ jobs:
   deploy-aliyun-ecs:
     name: Deploy to Aliyun ECS
     needs:
-      [
-        determine-version-info,
-        create-github-release,
-        publish-to-aliyun-acr,
-        post-release,
-      ]
-    if: github.event.pull_request.merged == true && needs.post-release.result == 'success'
+      [determine-version-info, create-github-release, publish-to-aliyun-acr]
+    if: github.event.pull_request.merged == true
     permissions:
       contents: read
       id-token: write
