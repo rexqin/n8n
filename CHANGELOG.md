@@ -1,3 +1,19 @@
+## [2.14.9](https://github.com/rexqin/n8n/compare/n8n@2.14.8...n8n@2.14.9) (2026-04-04)
+
+
+### Bug Fixes
+
+* **ci:** patch PR workflow checkout 拉取全部 tag；调试输出 commit ([1de4a97](https://github.com/rexqin/n8n/commit/1de4a977fc4182dfad18594f05e947274625bcfa))
+* **docker:** runners 镜像 Playwright 用 python -m；构建阶段仅下载 Chromium ([0f577d8](https://github.com/rexqin/n8n/commit/0f577d8914bd1739e7bf48aaed001714a5d75157))
+* **editor-ui:** authenticated 中间件 SAML 重定向参数类型断言 ([0ea92d5](https://github.com/rexqin/n8n/commit/0ea92d5d1bd38a12679724b042f3c7b756eb9a28))
+
+
+### Features
+
+* **editor-ui:** 开发体验与前端 dev 配置 ([64f0215](https://github.com/rexqin/n8n/commit/64f021535da7f4dce8eb2dfeb03a0aa860374b24))
+* **editor-ui:** 未认证且启用默认 SSO 时跳转 IdP；更新 SSO 登录按钮文案 ([e9fd749](https://github.com/rexqin/n8n/commit/e9fd7498c0d24d10e7a96734e0c29df0107fc9bc))
+
+
 ## [2.14.8](https://github.com/rexqin/n8n/compare/n8n@2.14.4...n8n@2.14.8) (2026-03-29)
 
 
