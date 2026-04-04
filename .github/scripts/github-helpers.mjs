@@ -92,6 +92,8 @@ export function resolveReleaseTagForTrack(track) {
 
 	const tagsAtCommit = listTagsPointingAt(commit);
 	const releaseTag = pickHighestReleaseTag(tagsAtCommit);
+	console.log('tagsAtCommit', tagsAtCommit);
+	console.log('releaseTag', releaseTag);
 	if (!releaseTag) return null;
 
 	return {
