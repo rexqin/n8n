@@ -32,7 +32,7 @@ services:
       - ibb8-net
 
   runners:
-    image: registry.cn-hangzhou.aliyuncs.com/rexqin/runners:${N8N_VERSION:-latest}-distroless
+    image: registry.cn-hangzhou.aliyuncs.com/rexqin/runners:${N8N_VERSION:-latest}
     restart: unless-stopped
     env_file:
       - .env.runner
