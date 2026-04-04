@@ -16,6 +16,7 @@ services:
   n8n:
     image: registry.cn-hangzhou.aliyuncs.com/rexqin/n8n:${N8N_VERSION:-latest}
     user: root:root
+    restart: unless-stopped
     env_file:
       - .env
     ports:
@@ -32,6 +33,7 @@ services:
 
   runners:
     image: registry.cn-hangzhou.aliyuncs.com/rexqin/runners:${N8N_VERSION:-latest}-distroless
+    restart: unless-stopped
     env_file:
       - .env.runner
     depends_on:

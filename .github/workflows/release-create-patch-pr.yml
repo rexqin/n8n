@@ -1,7 +1,11 @@
 name: 'Release: Create Patch Release PR'
-run-name: 'Release: Create Patch Release PR for track ${{ inputs.track }}'
+run-name: "Release: Create Patch Release PR for track ${{ github.ref == 'refs/tags/latest' && 'stable' || inputs.track }}"
 
 on:
+  push:
+    tags:
+      - 'latest'
+
   workflow_call:
     inputs:
       track:
@@ -39,7 +43,8 @@ jobs:
       - name: Determine release candidate branch from track
         id: determine-branch
         env:
-          TRACK: ${{ inputs.track }}
+          # push:tags latest 无 inputs，按 latest 语义使用 stable 轨道
+          TRACK: ${{ github.ref == 'refs/tags/latest' && 'stable' || inputs.track }}
         run: node .github/scripts/determine-release-candidate-branch-for-track.mjs
 
   skip-release-pr:
