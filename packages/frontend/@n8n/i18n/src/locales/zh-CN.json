@@ -4340,7 +4340,7 @@
 	"settings.mfa.toast.noRecoveryCodeLeft.title": "没有剩余的 2FA 恢复代码",
 	"settings.mfa.toast.noRecoveryCodeLeft.message": "您已使用所有恢复代码。禁用然后重新启用双因素身份验证以生成新代码。<a href='/settings/personal' target='_blank' >打开设置</a>",
 	"sso.login.divider": "或",
-	"sso.login.button": "登录",
+	"sso.login.button": "SSO登录",
 	"executionUsage.currentUsage": "{text} {count}",
 	"executionUsage.currentUsage.text": "您正在免费试用，执行次数有限。您有",
 	"executionUsage.currentUsage.count": "{n} 天剩余。| {n} 天剩余。",
