@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Replace single quotes with double quotes in dotenv files (UTF-8), in place."""
+"""Remove both single and double quotes in dotenv files (UTF-8), in place."""
 
 import sys
 from pathlib import Path
@@ -12,7 +12,7 @@ def main():
 		sys.exit(2)
 	for p in paths:
 		text = p.read_text(encoding="utf-8")
-		p.write_text(text.replace("'", '"'), encoding="utf-8")
+		p.write_text(text.replace("'", "").replace('"', ""), encoding="utf-8")
 
 
 if __name__ == "__main__":
