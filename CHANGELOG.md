@@ -1,3 +1,11 @@
+## [2.14.10](https://github.com/rexqin/n8n/compare/n8n@2.14.10...n8n@2.14.10) (2026-04-06)
+
+
+### Bug Fixes
+
+* **docker:** runners depends_on 改为列表以符合 stack deploy 校验 ([3c2d441](https://github.com/rexqin/n8n/commit/3c2d441b46867991f22a3631d9af7ddb92e67cda))
+
+
 ## [2.14.10](https://github.com/rexqin/n8n/compare/n8n@2.14.9...n8n@2.14.10) (2026-04-06)
 
 
