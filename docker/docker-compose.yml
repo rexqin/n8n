@@ -9,10 +9,14 @@
 # 镜像标签 ${N8N_VERSION}；版本由 CI 内联 N8N_VERSION= 传入。
 #
 # 使用 Swarm overlay 网络 ibb8-net（需已存在，例如：docker network create -d overlay ibb8-net）
+#
+# 数据卷：stack 名为 n8n 时，Swarm 默认会生成名为 n8n_n8n-data 的 local 卷。此处声明为 external，
+# 请在首次部署前执行：docker volume create n8n_n8n-data（或与 stack 名一致：{STACK}_n8n-data）。
 
 volumes:
-  postgres-data:
   n8n-data:
+    external: true
+    name: n8n_n8n-data
 
 services:
   n8n:
