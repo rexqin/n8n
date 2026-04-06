@@ -22,7 +22,6 @@ services:
   n8n:
     image: registry.cn-hangzhou.aliyuncs.com/rexqin/n8n:${N8N_VERSION:-latest}
     user: root:root
-    restart: unless-stopped
     env_file:
       - .env
     ports:
@@ -31,9 +30,10 @@ services:
       - n8n-data:/home/node/.n8n
     healthcheck:
       test: ["CMD-SHELL", "wget --spider -q http://n8n:5678/healthz || exit 1"]
-      interval: 5s
-      timeout: 5s
+      interval: 10s
+      timeout: 10s
       retries: 10
+      start_period: 60s
     networks:
       - ibb8-net
     deploy:
@@ -48,7 +48,6 @@ services:
 
   runners:
     image: registry.cn-hangzhou.aliyuncs.com/rexqin/runners:${N8N_VERSION:-latest}
-    restart: unless-stopped
     env_file:
       - .env.runner
     # docker stack deploy 校验要求 depends_on 为列表；Swarm 侧不强制顺序。本地 compose 仅保证 n8n 先启动，不等同于 service_healthy。
