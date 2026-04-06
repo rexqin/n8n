@@ -1,3 +1,6 @@
+## [2.14.10](https://github.com/rexqin/n8n/compare/n8n@2.14.9...n8n@2.14.10) (2026-04-06)
+
+
 ## [2.14.9](https://github.com/rexqin/n8n/compare/n8n@2.14.8...n8n@2.14.9) (2026-04-04)
 
 
