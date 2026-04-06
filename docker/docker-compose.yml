@@ -51,9 +51,9 @@ services:
     restart: unless-stopped
     env_file:
       - .env.runner
+    # docker stack deploy 校验要求 depends_on 为列表；Swarm 侧不强制顺序。本地 compose 仅保证 n8n 先启动，不等同于 service_healthy。
     depends_on:
-      n8n:
-        condition: service_healthy
+      - n8n
     networks:
       - ibb8-net
     deploy:
