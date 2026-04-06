@@ -1,5 +1,5 @@
-name: 'Release: Create GitHub Releases'
-run-name: 'Creating GitHub Releases for ${{ inputs.version-tag }} (${{ inputs.track }})'
+name: "Release: Create GitHub Releases"
+run-name: "Creating GitHub Releases for ${{ inputs.version-tag }} (${{ inputs.track }})"
 
 on:
   workflow_call:
@@ -19,20 +19,20 @@ on:
   workflow_dispatch:
     inputs:
       track:
-        description: 'Release Track'
+        description: "Release Track"
         required: true
         type: choice
         options: [stable, beta, v1]
       version-tag:
-        description: 'Version tag (e.g. n8n@2.7.0).'
+        description: "Version tag (e.g. n8n@2.7.0)."
         required: true
         type: string
       body:
-        description: 'Release notes body.'
+        description: "Release notes body."
         required: true
         type: string
       commit:
-        description: 'Commitish the release points to (e.g. branch name or SHA).'
+        description: "Commitish the release points to (e.g. branch name or SHA)."
         required: true
         type: string
 
@@ -44,17 +44,16 @@ jobs:
   create-github-releases:
     name: Create GitHub releases
     runs-on: ubuntu-slim
-    environment: release
-
+    environment: prod
     steps:
       - name: Fetch secrets from Infisical
         uses: Infisical/secrets-action@v1.0.15
         with:
           method: oidc
-          identity-id: 436a2630-fad8-475b-8f00-5ab158e9919e
-          project-slug: project-nd-zj
+          identity-id: ${{ secrets.INFISICAL_IDENTITY_ID }}
+          project-slug: ${{ vars.INFISICAL_PROJECT_SLUG }}
           env-slug: prod
-          secret-path: /n8n
+          secret-path: /n8n/ci
 
       # GITHUB_TOKEN must be stored in Infisical (e.g. fine-grained PAT with contents: write for releases).
       - name: Checkout
@@ -66,7 +65,7 @@ jobs:
       - name: Setup NodeJS
         uses: ./.github/actions/setup-nodejs
         with:
-          build-command: ''
+          build-command: ""
           install-command: pnpm install --frozen-lockfile --dir ./.github/scripts --ignore-workspace
 
       - name: Create GitHub releases

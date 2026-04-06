@@ -1,24 +1,24 @@
-name: 'Release: Attach SBOM'
+name: "Release: Attach SBOM"
 
 on:
   workflow_call:
     inputs:
       n8n_version:
-        description: 'N8N version to generate SBOM for'
+        description: "N8N version to generate SBOM for"
         required: true
         type: string
       release_tag_ref:
-        description: 'Git reference to checkout (e.g. n8n@1.2.3)'
+        description: "Git reference to checkout (e.g. n8n@1.2.3)"
         required: true
         type: string
   workflow_dispatch:
     inputs:
       n8n_version:
-        description: 'N8N version to generate SBOM for'
+        description: "N8N version to generate SBOM for"
         required: true
         type: string
       release_tag_ref:
-        description: 'Git reference to checkout (e.g. n8n@1.2.3)'
+        description: "Git reference to checkout (e.g. n8n@1.2.3)"
         required: true
         type: string
 
@@ -33,15 +33,16 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     continue-on-error: true
+    environment: prod
     steps:
       - name: Fetch secrets from Infisical
         uses: Infisical/secrets-action@v1.0.15
         with:
           method: oidc
-          identity-id: 436a2630-fad8-475b-8f00-5ab158e9919e
-          project-slug: project-nd-zj
+          identity-id: ${{ secrets.INFISICAL_IDENTITY_ID }}
+          project-slug: ${{ vars.INFISICAL_PROJECT_SLUG }}
           env-slug: prod
-          secret-path: /n8n
+          secret-path: /n8n/ci
 
       - name: Checkout release tag
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -51,7 +52,7 @@ jobs:
       - name: Setup Node.js and install dependencies
         uses: ./.github/actions/setup-nodejs
         with:
-          build-command: ''
+          build-command: ""
 
       - name: Generate CycloneDX SBOM for source code
         uses: anchore/sbom-action@57aae528053a48a3f6235f2d9461b05fbcb7366d # v0.23.1
@@ -63,8 +64,8 @@ jobs:
       - name: Attest SBOM for source release
         uses: actions/attest-sbom@07e74fc4e78d1aad915e867f9a094073a9f71527 # v4.0.0
         with:
-          subject-path: './package.json'
-          sbom-path: 'sbom-source.cdx.json'
+          subject-path: "./package.json"
+          sbom-path: "sbom-source.cdx.json"
 
       - name: Attach SBOM and VEX files to release
         env:

@@ -1,22 +1,22 @@
-name: 'Release: Create Patch Release PR'
+name: "Release: Create Patch Release PR"
 run-name: "Release: Create Patch Release PR for track ${{ github.ref == 'refs/tags/latest' && 'stable' || inputs.track }}"
 
 on:
   push:
     tags:
-      - 'latest'
+      - "latest"
 
   workflow_call:
     inputs:
       track:
-        description: 'Release Track'
+        description: "Release Track"
         required: true
         type: string
 
   workflow_dispatch:
     inputs:
       track:
-        description: 'Release Track'
+        description: "Release Track"
         required: true
         type: choice
         options: [stable, beta, v1]
@@ -39,7 +39,7 @@ jobs:
       - name: Setup Node.js
         uses: ./.github/actions/setup-nodejs
         with:
-          build-command: ''
+          build-command: ""
           install-command: pnpm install --frozen-lockfile --dir ./.github/scripts --ignore-workspace
 
       - name: Determine release candidate branch from track

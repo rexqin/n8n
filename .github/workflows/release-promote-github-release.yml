@@ -1,5 +1,5 @@
-name: 'Release: Promote GitHub Releases'
-run-name: 'Promoting GitHub Release ${{ inputs.version-tag }} to latest'
+name: "Release: Promote GitHub Releases"
+run-name: "Promoting GitHub Release ${{ inputs.version-tag }} to latest"
 
 on:
   workflow_call:
@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
     inputs:
       version-tag:
-        description: 'Version tag (e.g. n8n@2.7.0).'
+        description: "Version tag (e.g. n8n@2.7.0)."
         required: true
         type: string
 
@@ -22,17 +22,17 @@ jobs:
   promote-github-releases:
     name: Promote GitHub release to latest
     runs-on: ubuntu-slim
-    environment: release
+    environment: prod
 
     steps:
       - name: Fetch secrets from Infisical
         uses: Infisical/secrets-action@v1.0.15
         with:
           method: oidc
-          identity-id: 436a2630-fad8-475b-8f00-5ab158e9919e
-          project-slug: project-nd-zj
+          identity-id: ${{ secrets.INFISICAL_IDENTITY_ID }}
+          project-slug: ${{ vars.INFISICAL_PROJECT_SLUG }}
           env-slug: prod
-          secret-path: /n8n
+          secret-path: /n8n/ci
 
       - name: Generate GitHub App Token
         id: generate_token
@@ -50,7 +50,7 @@ jobs:
       - name: Setup NodeJS
         uses: ./.github/actions/setup-nodejs
         with:
-          build-command: ''
+          build-command: ""
           install-command: pnpm install --frozen-lockfile --dir ./.github/scripts --ignore-workspace
 
       - name: Promote GitHub releases

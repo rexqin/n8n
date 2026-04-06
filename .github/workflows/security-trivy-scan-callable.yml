@@ -4,14 +4,14 @@ on:
   workflow_dispatch:
     inputs:
       image_ref:
-        description: 'Full image reference to scan e.g. ghcr.io/n8n-io/n8n:latest'
+        description: "Full image reference to scan e.g. ghcr.io/n8n-io/n8n:latest"
         required: true
-        default: 'ghcr.io/n8n-io/n8n:latest'
+        default: "ghcr.io/n8n-io/n8n:latest"
   workflow_call:
     inputs:
       image_ref:
         type: string
-        description: 'Full image reference to scan e.g. ghcr.io/n8n-io/n8n:latest'
+        description: "Full image reference to scan e.g. ghcr.io/n8n-io/n8n:latest"
         required: true
 
 permissions:
@@ -25,15 +25,16 @@ jobs:
   security_scan:
     name: Security - Scan Docker Image With Trivy
     runs-on: ubuntu-latest
+    environment: prod
     steps:
       - name: Fetch secrets from Infisical
         uses: Infisical/secrets-action@v1.0.15
         with:
           method: oidc
-          identity-id: 436a2630-fad8-475b-8f00-5ab158e9919e
-          project-slug: project-nd-zj
+          identity-id: ${{ secrets.INFISICAL_IDENTITY_ID }}
+          project-slug: ${{ vars.INFISICAL_PROJECT_SLUG }}
           env-slug: prod
-          secret-path: /n8n
+          secret-path: /n8n/ci
 
       - name: Checkout for VEX file
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -53,13 +54,13 @@ jobs:
         id: trivy_scan
         with:
           image-ref: ${{ inputs.image_ref }}
-          version: 'v0.69.2'
-          format: 'json'
-          output: 'trivy-results.json'
-          severity: 'CRITICAL,HIGH,MEDIUM,LOW'
+          version: "v0.69.2"
+          format: "json"
+          output: "trivy-results.json"
+          severity: "CRITICAL,HIGH,MEDIUM,LOW"
           ignore-unfixed: false
-          exit-code: '0'
-          trivy-config: 'security/trivy.yaml'
+          exit-code: "0"
+          trivy-config: "security/trivy.yaml"
 
       - name: Calculate vulnerability counts
         id: process_results

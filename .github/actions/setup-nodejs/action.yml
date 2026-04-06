@@ -2,29 +2,29 @@
 # Blacksmith runners benefit from transparent caching and optional Docker layer caching.
 # GitHub-hosted runners use standard GitHub Actions caching.
 
-name: 'Node.js Build Setup'
-description: 'Configures Node.js with pnpm, installs Aikido SafeChain for supply chain protection, installs dependencies, enables Turborepo caching, (optional) sets up Docker layer caching, and builds the project or an optional command.'
+name: "Node.js Build Setup"
+description: "Configures Node.js with pnpm, installs Aikido SafeChain for supply chain protection, installs dependencies, enables Turborepo caching, (optional) sets up Docker layer caching, and builds the project or an optional command."
 
 inputs:
   node-version:
-    description: 'Node.js version to use. Pinned to 24.13.1 by default for reproducible builds.'
+    description: "Node.js version to use. Pinned to 24.13.1 by default for reproducible builds."
     required: false
-    default: '24.13.1'
+    default: "24.13.1"
   enable-docker-cache:
-    description: 'Whether to set up Blacksmith Buildx for Docker layer caching (Blacksmith runners only).'
+    description: "Whether to set up Blacksmith Buildx for Docker layer caching (Blacksmith runners only)."
     required: false
-    default: 'false'
+    default: "false"
   build-command:
-    description: 'Command to execute for building the project or an optional command. Leave empty to skip build step.'
+    description: "Command to execute for building the project or an optional command. Leave empty to skip build step."
     required: false
-    default: 'pnpm build'
+    default: "pnpm build"
   install-command:
-    description: 'Command to execute for installing project dependencies. Leave empty to skip install step.'
+    description: "Command to execute for installing project dependencies. Leave empty to skip install step."
     required: false
-    default: 'pnpm install --frozen-lockfile'
+    default: "pnpm install --frozen-lockfile"
 
 runs:
-  using: 'composite'
+  using: "composite"
   steps:
     # v5+ runs on Node.js 24 (GitHub deprecation of node20 actions). See pnpm/action-setup#205.
     - name: Setup pnpm
@@ -34,7 +34,7 @@ runs:
       uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
       with:
         node-version: ${{ inputs.node-version }}
-        cache: 'pnpm'
+        cache: "pnpm"
 
     # To avoid setup-node cache failure.
     # see: https://github.com/actions/setup-node/issues/1137

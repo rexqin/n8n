@@ -1,35 +1,35 @@
-name: 'Release: Create Pull Request'
+name: "Release: Create Pull Request"
 
 on:
   workflow_call:
     inputs:
       base-branch:
-        description: 'The branch, tag, or commit to create this release PR from.'
+        description: "The branch, tag, or commit to create this release PR from."
         required: true
         type: string
 
       release-type:
-        description: 'A SemVer release type.'
+        description: "A SemVer release type."
         required: true
         type: string
 
     outputs:
       pull-request-number:
-        description: 'Number of the created pull request'
+        description: "Number of the created pull request"
         value: ${{ jobs.create-release-pr.outputs.pull-request-number }}
 
   workflow_dispatch:
     inputs:
       base-branch:
-        description: 'The branch, tag, or commit to create this release PR from.'
+        description: "The branch, tag, or commit to create this release PR from."
         required: true
-        default: 'master'
+        default: "master"
 
       release-type:
-        description: 'A SemVer release type.'
+        description: "A SemVer release type."
         required: true
         type: choice
-        default: 'minor'
+        default: "minor"
         options:
           - patch
           - minor
@@ -45,7 +45,7 @@ permissions:
 jobs:
   create-release-pr:
     runs-on: ubuntu-latest
-
+    environment: prod
     permissions:
       contents: write
       pull-requests: write
@@ -61,10 +61,10 @@ jobs:
         uses: Infisical/secrets-action@v1.0.15
         with:
           method: oidc
-          identity-id: 436a2630-fad8-475b-8f00-5ab158e9919e
-          project-slug: project-nd-zj
+          identity-id: ${{ secrets.INFISICAL_IDENTITY_ID }}
+          project-slug: ${{ vars.INFISICAL_PROJECT_SLUG }}
           env-slug: prod
-          secret-path: /n8n
+          secret-path: /n8n/ci
 
       # GITHUB_TOKEN must be stored in Infisical (e.g. fine-grained PAT with contents + pull-requests).
       - name: Checkout
@@ -83,7 +83,7 @@ jobs:
       - name: Setup Node.js
         uses: ./.github/actions/setup-nodejs
         with:
-          build-command: ''
+          build-command: ""
           install-command: pnpm install --frozen-lockfile --dir ./.github/scripts --ignore-workspace
 
       - name: Setup corepack and pnpm
@@ -128,12 +128,12 @@ jobs:
         id: create-pr
         with:
           token: ${{ env.GITHUB_TOKEN }}
-          base: 'release/${{ env.NEXT_RELEASE }}'
-          branch: 'release-pr/${{ env.NEXT_RELEASE }}'
-          commit-message: ':rocket: Release ${{ env.NEXT_RELEASE }}'
+          base: "release/${{ env.NEXT_RELEASE }}"
+          branch: "release-pr/${{ env.NEXT_RELEASE }}"
+          commit-message: ":rocket: Release ${{ env.NEXT_RELEASE }}"
           delete-branch: true
           labels: release,release:${{ inputs.release-type }}
-          title: ':rocket: Release ${{ env.NEXT_RELEASE }}'
+          title: ":rocket: Release ${{ env.NEXT_RELEASE }}"
           body: ${{ steps.generate-body.outputs.content }}
 
   approve-and-automerge:

@@ -51,8 +51,7 @@ jobs:
   deploy:
     name: Deploy to Aliyun ECS
     runs-on: ubuntu-latest
-    environment:
-      name: aliyun-ecs
+    environment: prod
 
     steps:
       - name: Checkout
@@ -65,17 +64,17 @@ jobs:
         uses: Infisical/secrets-action@v1.0.15
         with:
           method: oidc
-          identity-id: 436a2630-fad8-475b-8f00-5ab158e9919e
-          project-slug: project-nd-zj
+          identity-id: ${{ secrets.INFISICAL_IDENTITY_ID }}
+          project-slug: ${{ vars.INFISICAL_PROJECT_SLUG }}
           env-slug: prod
           secret-path: /n8n/ci
 
-      - name: Fetch secrets from Infisical main
+      - name: Fetch secrets from Infisical /n8n
         uses: Infisical/secrets-action@v1.0.15
         with:
           method: oidc
-          identity-id: 436a2630-fad8-475b-8f00-5ab158e9919e
-          project-slug: project-nd-zj
+          identity-id: ${{ secrets.INFISICAL_IDENTITY_ID }}
+          project-slug: ${{ vars.INFISICAL_PROJECT_SLUG }}
           env-slug: prod
           export-type: file
           file-output-path: /.env
@@ -85,8 +84,8 @@ jobs:
         uses: Infisical/secrets-action@v1.0.15
         with:
           method: oidc
-          identity-id: 436a2630-fad8-475b-8f00-5ab158e9919e
-          project-slug: project-nd-zj
+          identity-id: ${{ secrets.INFISICAL_IDENTITY_ID }}
+          project-slug: ${{ vars.INFISICAL_PROJECT_SLUG }}
           env-slug: prod
           export-type: file
           file-output-path: /.env.runner
@@ -148,7 +147,7 @@ jobs:
           key: ${{ env.ECS_SSH_PRIVATE_KEY }}
           port: 22
           script_stop: true
-          script: mkdir -p '${{ steps.prep.outputs.deploy_path }}'
+          script: mkdir  -p '${{ steps.prep.outputs.deploy_path }}'
 
       - name: Copy compose and env to ECS (SCP)
         uses: appleboy/scp-action@917f8b81dfc1ccd331fef9e2d61bdc6c8be94634 # v0.1.7

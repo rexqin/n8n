@@ -1,25 +1,25 @@
-name: 'Release: Send version release notification'
-run-name: 'Send version release notification for n8n@${{ inputs.version }}'
+name: "Release: Send version release notification"
+run-name: "Send version release notification for n8n@${{ inputs.version }}"
 
 on:
   workflow_dispatch:
     inputs:
       previous-version:
-        description: 'The previous release version (e.g. 2.10.2)'
+        description: "The previous release version (e.g. 2.10.2)"
         required: true
         type: string
       version:
-        description: 'The release version (e.g. 2.11.0)'
+        description: "The release version (e.g. 2.11.0)"
         required: true
         type: string
   workflow_call:
     inputs:
       previous-version:
-        description: 'The previous release version (e.g. 2.10.2)'
+        description: "The previous release version (e.g. 2.10.2)"
         required: true
         type: string
       version:
-        description: 'The release version (e.g. 2.11.0)'
+        description: "The release version (e.g. 2.11.0)"
         required: true
         type: string
 
@@ -30,7 +30,7 @@ permissions:
 jobs:
   release-notification:
     runs-on: ubuntu-slim
-    environment: release
+    environment: prod
     steps:
       - name: Checkout
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
@@ -41,15 +41,15 @@ jobs:
         uses: Infisical/secrets-action@v1.0.15
         with:
           method: oidc
-          identity-id: 436a2630-fad8-475b-8f00-5ab158e9919e
-          project-slug: project-nd-zj
+          identity-id: ${{ secrets.INFISICAL_IDENTITY_ID }}
+          project-slug: ${{ vars.INFISICAL_PROJECT_SLUG }}
           env-slug: prod
-          secret-path: /n8n
+          secret-path: /n8n/ci
 
       - name: Setup Node.js
         uses: ./.github/actions/setup-nodejs
         with:
-          build-command: ''
+          build-command: ""
           install-command: pnpm install --frozen-lockfile --dir ./.github/scripts --ignore-workspace
 
       - name: Send release notification

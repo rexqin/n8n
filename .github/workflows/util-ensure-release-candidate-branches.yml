@@ -1,4 +1,12 @@
-name: 'Util: Ensure release candidate branches'
+# Infisical OIDC：identity-id 存 Environment 密钥，project-slug 存 Environment 变量（勿把 slug 写进密钥名以外的公开处即可）。
+# 一次性在本仓库创建 GitHub Environment「prod」并写入（在仓库根目录执行，需 gh 已登录且对仓库有 admin/settings）：
+#
+#   gh api "repos/$(gh repo view --json nameWithOwner -q .nameWithOwner)/environments/prod" -X PUT
+#   gh secret set INFISICAL_IDENTITY_ID --env prod --body "436a2630-fad8-475b-8f00-5ab158e9919e"
+#   gh variable set INFISICAL_PROJECT_SLUG --env prod --body "project-nd-zj"
+#
+# 若 prod 环境配置了「Required reviewers」，本 workflow 会等待审批后才跑。
+name: "Util: Ensure release candidate branches"
 
 on:
   workflow_dispatch:
@@ -12,15 +20,16 @@ jobs:
   ensure-release-candidate-branches:
     name: Ensure release-candidate branches
     runs-on: ubuntu-slim
+    environment: prod
     steps:
       - name: Fetch secrets from Infisical
         uses: Infisical/secrets-action@v1.0.15
         with:
           method: oidc
-          identity-id: 436a2630-fad8-475b-8f00-5ab158e9919e
-          project-slug: project-nd-zj
+          identity-id: ${{ secrets.INFISICAL_IDENTITY_ID }}
+          project-slug: ${{ vars.INFISICAL_PROJECT_SLUG }}
           env-slug: prod
-          secret-path: /n8n
+          secret-path: /n8n/ci
 
       # GITHUB_TOKEN must be stored in Infisical (PAT with contents: write for branch push).
       - name: Checkout
@@ -33,7 +42,7 @@ jobs:
       - name: Setup NodeJS
         uses: ./.github/actions/setup-nodejs
         with:
-          build-command: ''
+          build-command: ""
           install-command: pnpm install --frozen-lockfile --dir ./.github/scripts --ignore-workspace
 
       - name: Ensure release-candidate branches

@@ -1,33 +1,33 @@
-name: 'Release: Populate cloud with releases'
-run-name: 'Populate cloud with version n8n@${{ inputs.version }}'
+name: "Release: Populate cloud with releases"
+run-name: "Populate cloud with version n8n@${{ inputs.version }}"
 
 on:
   workflow_dispatch:
     inputs:
       previous-version:
-        description: 'The previous release version (e.g. 2.10.2)'
+        description: "The previous release version (e.g. 2.10.2)"
         required: true
         type: string
       version:
-        description: 'The release version (e.g. 2.11.0)'
+        description: "The release version (e.g. 2.11.0)"
         required: true
         type: string
       experimental:
-        description: 'If publishing experimental version'
+        description: "If publishing experimental version"
         type: boolean
         default: false
   workflow_call:
     inputs:
       previous-version:
-        description: 'The previous release version (e.g. 2.10.2)'
+        description: "The previous release version (e.g. 2.10.2)"
         required: true
         type: string
       version:
-        description: 'The release version (e.g. 2.11.0)'
+        description: "The release version (e.g. 2.11.0)"
         required: true
         type: string
       experimental:
-        description: 'If publishing experimental version'
+        description: "If publishing experimental version"
         type: boolean
         default: false
 
@@ -38,7 +38,7 @@ permissions:
 jobs:
   determine-changes:
     runs-on: ubuntu-slim
-    environment: release
+    environment: prod
     outputs:
       has_node_enhancements: ${{ steps.get-changes.outputs.has_node_enhancements }}
       has_core_changes: ${{ steps.get-changes.outputs.has_core_changes }}
@@ -52,22 +52,22 @@ jobs:
         uses: Infisical/secrets-action@v1.0.15
         with:
           method: oidc
-          identity-id: 436a2630-fad8-475b-8f00-5ab158e9919e
-          project-slug: project-nd-zj
+          identity-id: ${{ secrets.INFISICAL_IDENTITY_ID }}
+          project-slug: ${{ vars.INFISICAL_PROJECT_SLUG }}
           env-slug: prod
-          secret-path: /n8n
+          secret-path: /n8n/ci
 
       - name: Setup Node.js
         uses: ./.github/actions/setup-nodejs
         with:
-          build-command: ''
+          build-command: ""
           install-command: pnpm install --frozen-lockfile --dir ./.github/scripts --ignore-workspace
 
       - name: Extract changes
         id: get-changes
         env:
-          PREVIOUS_VERSION_TAG: 'n8n@${{ inputs.previous-version }}'
-          RELEASE_VERSION_TAG: 'n8n@${{ inputs.version }}'
+          PREVIOUS_VERSION_TAG: "n8n@${{ inputs.previous-version }}"
+          RELEASE_VERSION_TAG: "n8n@${{ inputs.version }}"
         run: node ./.github/scripts/determine-release-version-changes.mjs
 
       - name: Populate databases

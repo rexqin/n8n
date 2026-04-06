@@ -1,5 +1,5 @@
-name: 'Release: Update pointer tag'
-run-name: 'Update pointer tag: ${{ inputs.track }} -> ${{ inputs.version-tag }}'
+name: "Release: Update pointer tag"
+run-name: "Update pointer tag: ${{ inputs.track }} -> ${{ inputs.version-tag }}"
 
 on:
   workflow_call:
@@ -13,12 +13,12 @@ on:
   workflow_dispatch:
     inputs:
       track:
-        description: 'Release Track'
+        description: "Release Track"
         required: true
         type: choice
         options: [stable, beta, v1]
       version-tag:
-        description: 'Version tag (e.g. n8n@2.7.0). Track tag will point to this version tag.'
+        description: "Version tag (e.g. n8n@2.7.0). Track tag will point to this version tag."
         required: true
         type: string
 
@@ -30,17 +30,17 @@ jobs:
   update-pointer-tags:
     name: Update pointer tags
     runs-on: ubuntu-slim
-    environment: minor-release-tag-merge
+    environment: prod
 
     steps:
       - name: Fetch secrets from Infisical
         uses: Infisical/secrets-action@v1.0.15
         with:
           method: oidc
-          identity-id: 436a2630-fad8-475b-8f00-5ab158e9919e
-          project-slug: project-nd-zj
+          identity-id: ${{ secrets.INFISICAL_IDENTITY_ID }}
+          project-slug: ${{ vars.INFISICAL_PROJECT_SLUG }}
           env-slug: prod
-          secret-path: /n8n
+          secret-path: /n8n/ci
 
       # GITHUB_TOKEN must be stored in Infisical (PAT with contents: write for tag push).
       - name: Checkout
@@ -54,7 +54,7 @@ jobs:
       - name: Setup NodeJS
         uses: ./.github/actions/setup-nodejs
         with:
-          build-command: ''
+          build-command: ""
           install-command: pnpm install --frozen-lockfile --dir ./.github/scripts --ignore-workspace
 
       - name: Configure git author
