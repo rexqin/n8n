@@ -1,12 +1,14 @@
 # 本地部署：n8n + PostgreSQL
-# 使用方式：在项目根目录执行 docker compose up -d
+# 使用方式：在项目根目录执行 docker compose up -d（standalone 会忽略 deploy 段）
 # 访问：http://localhost:80
 #
-# 阿里云 ECS 自动部署：GitHub Actions → .github/workflows/deploy-aliyun-ecs.yml
-# （.env / .env.runner；镜像标签 ${N8N_VERSION}；ECS 部署见 deploy-aliyun-ecs.yml，版本可由内联 N8N_VERSION= 覆盖）
+# 阿里云 ECS（Swarm）：deploy-aliyun-ecs.yml 使用 docker stack deploy；需事先 docker swarm init、
+# 创建 overlay 网络 ibb8-net，并在 Infisical 配置 ECS_STACK_NAME、ECS_DEPLOY_NODE_ID（目标节点
+# docker node ls 的 ID）。stack 部署前用 docker compose config 合并 env_file，因 stack 不直接支持 env_file。
+#
+# 镜像标签 ${N8N_VERSION}；版本由 CI 内联 N8N_VERSION= 传入。
 #
 # 使用 Swarm overlay 网络 ibb8-net（需已存在，例如：docker network create -d overlay ibb8-net）
-# 若希望由 compose 创建 overlay，可将 networks.ibb8-net 改为 driver: overlay（通常需 swarm init）
 
 volumes:
   postgres-data:
@@ -30,6 +32,15 @@ services:
       retries: 10
     networks:
       - ibb8-net
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.id == ${ECS_DEPLOY_NODE_ID}
+      restart_policy:
+        condition: any
+        delay: 5s
 
   runners:
     image: registry.cn-hangzhou.aliyuncs.com/rexqin/runners:${N8N_VERSION:-latest}
@@ -41,6 +52,15 @@ services:
         condition: service_healthy
     networks:
       - ibb8-net
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.id == ${ECS_DEPLOY_NODE_ID}
+      restart_policy:
+        condition: any
+        delay: 5s
 
 networks:
   ibb8-net:

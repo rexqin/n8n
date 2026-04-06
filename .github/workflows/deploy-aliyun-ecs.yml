@@ -1,9 +1,13 @@
-# 将 n8n 栈部署到阿里云 ECS（通过 SSH）
-# Infisical：/n8n 与 /n8n/runner 分别导出为仓库根目录下的 .env、.env.runner；上传前由 .github/scripts/sanitize-dotenv-quotes.py 将单引号替换为双引号，再 scp 到 ECS。
-# 镜像版本：workflow 入参 n8n_version 通过 `N8N_VERSION=... docker compose ...` 传入（覆盖 .env 中同名项若存在）。
+# 将 n8n 栈部署到阿里云 ECS（appleboy/scp-action、appleboy/ssh-action；目标机需 Swarm，docker stack deploy）
+# Infisical：/n8n 与 /n8n/runner 分别导出为仓库根目录下的 .env、.env.runner；上传前由 .github/scripts/sanitize-dotenv-quotes.py 将单引号替换为双引号，再 SCP 到 ECS。
+# 镜像版本：workflow 入参 n8n_version 通过 N8N_VERSION 传入；栈名与节点由 ECS_STACK_NAME、ECS_DEPLOY_NODE_ID 指定。
+# 部署：先 docker compose config 合并 env_file 生成 stack-deploy.yml，再 docker stack deploy（Swarm 不支持 compose env_file）。
+# 从纯 compose 迁到 stack 时，命名卷会按 stack 前缀新建；若需保留数据请事先迁移卷或改用 external volume。
 #
 # Infisical 中至少配置：
 #   - ECS_HOST / ECS_USER / ECS_SSH_PRIVATE_KEY  （仅部署用，不写入 compose env 文件）
+#   - ECS_STACK_NAME（Swarm stack 名称）
+#   - ECS_DEPLOY_NODE_ID（目标节点 ID，与 docker node ls 中 ID 一致，用于 placement）
 #   - ECS_DEPLOY_PATH （可选，仅部署用）
 #   - ACR_USERNAME / ACR_PASSWORD / ACR_REGISTRY（可选，用于 ECS 上 docker login）
 #   - /n8n、/n8n/runner 下 compose 所需变量（与 docker-compose.yml 中 env_file 对应）
@@ -18,7 +22,7 @@ on:
         required: false
         default: ""
       n8n_version:
-        description: "以内联环境变量传给 compose 的 N8N_VERSION（semver，如 2.14.3）"
+        description: "镜像标签 N8N_VERSION（semver，如 2.14.3）；用于 pull 与 stack 部署"
         required: false
         default: ""
 
@@ -30,7 +34,7 @@ on:
         type: string
         default: ""
       n8n_version:
-        description: "以内联环境变量传给 compose 的 N8N_VERSION（semver）"
+        description: "镜像标签 N8N_VERSION（semver）；用于 pull 与 stack 部署"
         required: false
         type: string
         default: ""
@@ -64,7 +68,7 @@ jobs:
           identity-id: 436a2630-fad8-475b-8f00-5ab158e9919e
           project-slug: project-nd-zj
           env-slug: prod
-          secret-path: /n8n
+          secret-path: /n8n/ci
 
       - name: Fetch secrets from Infisical main
         uses: Infisical/secrets-action@v1.0.15
@@ -93,35 +97,33 @@ jobs:
           test -n "${ECS_HOST:-}" || { echo "::error::Infisical 缺少 ECS_HOST"; exit 1; }
           test -n "${ECS_USER:-}" || { echo "::error::Infisical 缺少 ECS_USER"; exit 1; }
           test -n "${ECS_SSH_PRIVATE_KEY:-}" || { echo "::error::Infisical 缺少 ECS_SSH_PRIVATE_KEY"; exit 1; }
+          test -n "${ECS_STACK_NAME:-}" || { echo "::error::Infisical 缺少 ECS_STACK_NAME（Swarm stack 名称）"; exit 1; }
+          test -n "${ECS_DEPLOY_NODE_ID:-}" || { echo "::error::Infisical 缺少 ECS_DEPLOY_NODE_ID（docker node ls 中的节点 ID）"; exit 1; }
 
-      - name: Deploy with inline N8N_VERSION
+      - name: Prepare env files and upload staging
+        id: prep
         env:
           INPUT_N8N_VERSION: ${{ inputs.n8n_version }}
         run: |
           set -euo pipefail
-          DEPLOY_PATH="${ECS_DEPLOY_PATH:-/opt/n8n}"
-
           VERSION="${INPUT_N8N_VERSION:-}"
           if [ -z "$VERSION" ]; then
-            echo "::error::必须提供 n8n_version（用于 N8N_VERSION=... docker compose ...）。"
+            echo "::error::必须提供 n8n_version（用于 N8N_VERSION 与镜像拉取）。"
             exit 1
           fi
-          echo "::notice::N8N_VERSION=${VERSION}（通过内联环境变量传入 docker compose）"
+          DEPLOY_PATH="${ECS_DEPLOY_PATH:-/opt/n8n}"
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "deploy_path=${DEPLOY_PATH}" >> "$GITHUB_OUTPUT"
 
+          echo "::notice::N8N_VERSION=${VERSION}；stack=${ECS_STACK_NAME}；node=${ECS_DEPLOY_NODE_ID}"
           {
             echo "## 部署环境"
             echo ""
             echo "- **N8N_VERSION**：\`${VERSION}\`"
+            echo "- **ECS_STACK_NAME**：\`${ECS_STACK_NAME}\`"
+            echo "- **ECS_DEPLOY_NODE_ID**：\`${ECS_DEPLOY_NODE_ID}\`"
             echo "- **Git SHA**：\`${GITHUB_SHA}\`"
           } >> "$GITHUB_STEP_SUMMARY"
-
-          mkdir -p ~/.ssh
-          printf '%s\n' "$ECS_SSH_PRIVATE_KEY" > ~/.ssh/deploy_key
-          chmod 600 ~/.ssh/deploy_key
-          ssh-keyscan -H "$ECS_HOST" >> ~/.ssh/known_hosts 2>/dev/null || true
-
-          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=accept-new \
-            "${ECS_USER}@${ECS_HOST}" "mkdir -p '${DEPLOY_PATH}'"
 
           for f in ".env" ".env.runner"; do
             if [ ! -s "${GITHUB_WORKSPACE}/${f}" ]; then
@@ -134,36 +136,75 @@ jobs:
             "${GITHUB_WORKSPACE}/.env" \
             "${GITHUB_WORKSPACE}/.env.runner"
 
-          scp -i ~/.ssh/deploy_key -o StrictHostKeyChecking=accept-new \
-            docker/docker-compose.yml "${ECS_USER}@${ECS_HOST}:${DEPLOY_PATH}/docker-compose.yml"
-          scp -i ~/.ssh/deploy_key -o StrictHostKeyChecking=accept-new \
-            "${GITHUB_WORKSPACE}/.env" "${ECS_USER}@${ECS_HOST}:${DEPLOY_PATH}/.env"
-          scp -i ~/.ssh/deploy_key -o StrictHostKeyChecking=accept-new \
-            "${GITHUB_WORKSPACE}/.env.runner" "${ECS_USER}@${ECS_HOST}:${DEPLOY_PATH}/.env.runner"
+          mkdir -p deploy-upload
+          cp docker/docker-compose.yml deploy-upload/docker-compose.yml
+          cp "${GITHUB_WORKSPACE}/.env" "${GITHUB_WORKSPACE}/.env.runner" deploy-upload/
 
-          # 拉取 ACR 私有镜像前在 ECS 上登录（凭据来自 Infisical）
-          if [ -n "${ACR_USERNAME:-}" ] && [ -n "${ACR_PASSWORD:-}" ]; then
-            echo "::notice::正在登录 registry.cn-hangzhou.aliyuncs.com …"
-            printf '%s\n' "$ACR_PASSWORD" | ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=accept-new \
-              "${ECS_USER}@${ECS_HOST}" \
-              "docker login $(printf '%q' "$ACR_REGISTRY") --username $(printf '%q' "$ACR_USERNAME") --password-stdin"
-          else
-            echo "::notice::未设置 ACR_USERNAME/ACR_PASSWORD，跳过 docker login（公开镜像可直接 pull）"
-          fi
+      - name: Create remote deploy directory
+        uses: appleboy/ssh-action@7eaf76671a0d7eec5d98ee897acda4f968735a17 # v1.2.0
+        with:
+          host: ${{ env.ECS_HOST }}
+          username: ${{ env.ECS_USER }}
+          key: ${{ env.ECS_SSH_PRIVATE_KEY }}
+          port: 22
+          script_stop: true
+          script: mkdir -p '${{ steps.prep.outputs.deploy_path }}'
 
-          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=accept-new \
-            "${ECS_USER}@${ECS_HOST}" bash -s -- "$DEPLOY_PATH" "$VERSION" << 'REMOTE'
-          set -euo pipefail
-          DEPLOY_PATH="$1"
-          VERSION="$2"
-          cd "$DEPLOY_PATH"
-          N8N_VERSION="$VERSION" docker compose -f docker-compose.yml down --remove-orphans || true
-          N8N_VERSION="$VERSION" docker compose -f docker-compose.yml pull
-          N8N_VERSION="$VERSION" docker compose -f docker-compose.yml up -d --remove-orphans
-          docker compose ps
-          docker image prune -f
-          REMOTE
+      - name: Copy compose and env to ECS (SCP)
+        uses: appleboy/scp-action@917f8b81dfc1ccd331fef9e2d61bdc6c8be94634 # v0.1.7
+        with:
+          host: ${{ env.ECS_HOST }}
+          username: ${{ env.ECS_USER }}
+          key: ${{ env.ECS_SSH_PRIVATE_KEY }}
+          port: 22
+          source: deploy-upload
+          target: ${{ steps.prep.outputs.deploy_path }}
+          strip_components: 1
+          overwrite: true
 
-      - name: Cleanup SSH key
-        if: always()
-        run: rm -f ~/.ssh/deploy_key
+      - name: Docker login on ECS (ACR)
+        if: ${{ env.ACR_USERNAME != '' && env.ACR_PASSWORD != '' }}
+        uses: appleboy/ssh-action@7eaf76671a0d7eec5d98ee897acda4f968735a17 # v1.2.0
+        env:
+          ACR_REGISTRY: ${{ env.ACR_REGISTRY }}
+          ACR_USERNAME: ${{ env.ACR_USERNAME }}
+          ACR_PASSWORD: ${{ env.ACR_PASSWORD }}
+        with:
+          host: ${{ env.ECS_HOST }}
+          username: ${{ env.ECS_USER }}
+          key: ${{ env.ECS_SSH_PRIVATE_KEY }}
+          port: 22
+          script_stop: true
+          envs: ACR_REGISTRY,ACR_USERNAME,ACR_PASSWORD
+          script: |
+            set -euo pipefail
+            printf '%s\n' "$ACR_PASSWORD" | docker login "$ACR_REGISTRY" --username "$ACR_USERNAME" --password-stdin
+
+      - name: Notice skip Docker login
+        if: ${{ env.ACR_USERNAME == '' || env.ACR_PASSWORD == '' }}
+        run: echo "::notice::未设置 ACR_USERNAME/ACR_PASSWORD，跳过 docker login（公开镜像可直接 pull）"
+
+      - name: Deploy stack on ECS (SSH)
+        uses: appleboy/ssh-action@7eaf76671a0d7eec5d98ee897acda4f968735a17 # v1.2.0
+        env:
+          DEPLOY_PATH: ${{ steps.prep.outputs.deploy_path }}
+          N8N_VERSION: ${{ steps.prep.outputs.version }}
+          ECS_STACK_NAME: ${{ env.ECS_STACK_NAME }}
+          ECS_DEPLOY_NODE_ID: ${{ env.ECS_DEPLOY_NODE_ID }}
+        with:
+          host: ${{ env.ECS_HOST }}
+          username: ${{ env.ECS_USER }}
+          key: ${{ env.ECS_SSH_PRIVATE_KEY }}
+          port: 22
+          command_timeout: 15m
+          script_stop: true
+          envs: DEPLOY_PATH,N8N_VERSION,ECS_STACK_NAME,ECS_DEPLOY_NODE_ID
+          script: |
+            set -euo pipefail
+            cd "$DEPLOY_PATH"
+            export N8N_VERSION
+            export ECS_DEPLOY_NODE_ID
+            docker compose -f docker-compose.yml pull
+            docker stack deploy --with-registry-auth -c docker-compose.yml "$ECS_STACK_NAME"
+            docker stack services "$ECS_STACK_NAME"
+            docker image prune -f
