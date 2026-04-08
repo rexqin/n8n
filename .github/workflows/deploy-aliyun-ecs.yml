@@ -203,7 +203,13 @@ jobs:
             cd "$DEPLOY_PATH"
             export N8N_VERSION
             export ECS_DEPLOY_NODE_ID
-            docker compose -f docker-compose.yml pull
+
             docker stack deploy --with-registry-auth -c docker-compose.yml "$ECS_STACK_NAME"
-            docker stack services "$ECS_STACK_NAME"
+            
+            TARGET_SERVICE="${STACK_NAME}_n8n"
+            docker service update --with-registry-auth --force "$TARGET_SERVICE"
+
+            TARGET_RUNNER_SERVICE="${STACK_NAME}_runners"
+            docker service update --with-registry-auth --force "$TARGET_RUNNER_SERVICE"
+            
             docker image prune -f
