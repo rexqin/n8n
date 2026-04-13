@@ -272,6 +272,12 @@ export class OidcService {
 			throw new BadRequestError('Invalid email format');
 		}
 
+		const provisioningClaims = this.buildClaimsForProvisioning(
+			claims as Record<string, unknown>,
+			tokens.access_token,
+			userInfo,
+		);
+
 		const openidUser = await this.authIdentityRepository.findOne({
 			where: { providerId: claims.sub, providerType: 'oidc' },
 			relations: {
@@ -282,7 +288,7 @@ export class OidcService {
 		});
 
 		if (openidUser) {
-			await this.applySsoProvisioning(openidUser.user, claims);
+			await this.applySsoProvisioning(openidUser.user, provisioningClaims);
 
 			return openidUser.user;
 		}
@@ -304,7 +310,7 @@ export class OidcService {
 			});
 
 			await this.authIdentityRepository.save(id);
-			await this.applySsoProvisioning(foundUser, claims);
+			await this.applySsoProvisioning(foundUser, provisioningClaims);
 
 			return foundUser;
 		}
@@ -333,12 +339,51 @@ export class OidcService {
 			return newUser;
 		});
 
-		await this.applySsoProvisioning(user, claims);
+		await this.applySsoProvisioning(user, provisioningClaims);
 
 		return user;
 	}
 
-	private async applySsoProvisioning(user: User, claims: any) {
+	/**
+	 * Merge JWT access_token payload (when the token is a JWT) and UserInfo with ID token claims
+	 * for SSO provisioning. ID token claims win on key collisions so `sub` stays authoritative.
+	 * Logto and similar providers often put API resource / custom claims only on the access token.
+	 */
+	private buildClaimsForProvisioning(
+		idTokenClaims: Record<string, unknown>,
+		accessToken: string | undefined,
+		userInfo: unknown,
+	): Record<string, unknown> {
+		const fromAccessToken = this.tryDecodeJwtPayload(accessToken);
+		const fromUserInfo =
+			typeof userInfo === 'object' && userInfo !== null && !Array.isArray(userInfo)
+				? (userInfo as Record<string, unknown>)
+				: {};
+		return { ...fromAccessToken, ...fromUserInfo, ...idTokenClaims };
+	}
+
+	/** Best-effort JWT payload decode (no signature verification); opaque tokens yield {}. */
+	private tryDecodeJwtPayload(accessToken: string | undefined): Record<string, unknown> {
+		if (!accessToken) {
+			return {};
+		}
+		const parts = accessToken.split('.');
+		if (parts.length !== 3) {
+			return {};
+		}
+		try {
+			const json = Buffer.from(parts[1], 'base64url').toString('utf8');
+			const payload: unknown = JSON.parse(json);
+			if (typeof payload !== 'object' || payload === null || Array.isArray(payload)) {
+				return {};
+			}
+			return payload as Record<string, unknown>;
+		} catch {
+			return {};
+		}
+	}
+
+	private async applySsoProvisioning(user: User, claims: Record<string, unknown>) {
 		const provisioningConfig = await this.provisioningService.getConfig();
 		const projectRoleMapping = claims[provisioningConfig.scopesProjectsRolesClaimName];
 		const instanceRole = claims[provisioningConfig.scopesInstanceRoleClaimName];

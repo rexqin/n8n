@@ -500,7 +500,10 @@ describe('OidcService', () => {
 			expect(user).toBeDefined();
 			expect(user.email).toEqual('john.doe@test.com');
 			// @ts-expect-error - applySsoProvisioning is private and only accessible within class 'OidcService'
-			expect(oidcService.applySsoProvisioning).toHaveBeenCalledWith(user, { sub: 'valid-subject' });
+			expect(oidcService.applySsoProvisioning).toHaveBeenCalledWith(
+				user,
+				expect.objectContaining({ sub: 'valid-subject' }),
+			);
 		});
 
 		it('should return a user if the user exists but the auth identity does not', async () => {
@@ -530,7 +533,51 @@ describe('OidcService', () => {
 			expect(user).toBeDefined();
 			expect(user.email).toEqual('john.doe@test.com');
 			// @ts-expect-error - applySsoProvisioning is private and only accessible within class 'OidcService'
-			expect(oidcService.applySsoProvisioning).toHaveBeenCalledWith(user, { sub: 'valid-subject' });
+			expect(oidcService.applySsoProvisioning).toHaveBeenCalledWith(
+				user,
+				expect.objectContaining({ sub: 'valid-subject' }),
+			);
+		});
+
+		it('merges JWT access_token payload into provisioning claims (e.g. Logto resource claims)', async () => {
+			oidcService.verifyState = jest.fn().mockReturnValue('valid-state');
+			oidcService.verifyNonce = jest.fn().mockReturnValue('valid-nonce');
+			// @ts-expect-error - getOidcConfiguration is private and only accessible within class 'OidcService'
+			oidcService.getOidcConfiguration = jest.fn().mockResolvedValue({} as client.Configuration);
+			// @ts-expect-error - applySsoProvisioning is private and only accessible within class 'OidcService'
+			oidcService.applySsoProvisioning = jest.fn().mockResolvedValue(undefined);
+			authIdentityRepository.findOne = jest
+				.fn()
+				.mockResolvedValue({ user: { email: 'john.doe@test.com' } as any });
+
+			const payload = Buffer.from(JSON.stringify({ n8n_instance_role: 'global:member' })).toString(
+				'base64url',
+			);
+			const accessToken = `e30.${payload}.x`;
+
+			jest.spyOn(client, 'authorizationCodeGrant').mockResolvedValue({
+				access_token: accessToken,
+				token_type: 'bearer',
+				claims: () => {
+					return { sub: 'valid-subject' };
+				},
+			} as unknown as client.TokenEndpointResponse & client.TokenEndpointResponseHelpers);
+			jest
+				.spyOn(client, 'fetchUserInfo')
+				.mockResolvedValue({ email_verified: true, email: 'john.doe@test.com' } as any);
+			const callbackUrl = new URL('https://example.com/callback');
+			const storedState = oidcService.generateState().signed;
+			const storedNonce = oidcService.generateNonce().signed;
+
+			await oidcService.loginUser(callbackUrl, storedState, storedNonce);
+			// @ts-expect-error - applySsoProvisioning is private and only accessible within class 'OidcService'
+			expect(oidcService.applySsoProvisioning).toHaveBeenCalledWith(
+				expect.anything(),
+				expect.objectContaining({
+					sub: 'valid-subject',
+					n8n_instance_role: 'global:member',
+				}),
+			);
 		});
 
 		it('should create a new user if the user does not exist', async () => {
