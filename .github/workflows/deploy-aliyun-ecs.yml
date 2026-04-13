@@ -212,4 +212,4 @@ jobs:
             TARGET_RUNNER_SERVICE="${ECS_STACK_NAME}_runners"
             docker service update --with-registry-auth --force "$TARGET_RUNNER_SERVICE"
 
-            docker image prune -f
+            docker system prune -f
