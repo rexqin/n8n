@@ -419,6 +419,7 @@ describe('GlobalConfig', () => {
 			},
 			oidc: {
 				loginEnabled: false,
+				organizationId: '',
 			},
 			ldap: {
 				loginEnabled: false,

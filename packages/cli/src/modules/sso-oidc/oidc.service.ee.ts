@@ -211,6 +211,9 @@ export class OidcService {
 			prompt,
 			state: state.plaintext,
 			nonce: nonce.plaintext,
+			...(this.globalConfig.sso.oidc.organizationId !== '' && {
+				organization_id: this.globalConfig.sso.oidc.organizationId,
+			}),
 			...(authenticationContextClassReference.length > 0 && {
 				acr_values: authenticationContextClassReference.join(' '),
 			}),

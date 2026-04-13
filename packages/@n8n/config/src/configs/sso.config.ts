@@ -16,6 +16,13 @@ class OidcConfig {
 	/** Whether OIDC-based single sign-on is enabled. */
 	@Env('N8N_SSO_OIDC_LOGIN_ENABLED')
 	loginEnabled: boolean = false;
+
+	/**
+	 * When set, sent as the `organization_id` query parameter on the OIDC authorization request
+	 * (for identity providers that require it).
+	 */
+	@Env('N8N_SSO_OIDC_ORGANIZATION_ID')
+	organizationId: string = '';
 }
 
 @Config
