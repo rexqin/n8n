@@ -1,3 +1,16 @@
+## [2.14.10](https://github.com/rexqin/n8n/compare/n8n@2.14.10...n8n@2.14.10) (2026-04-13)
+
+
+### Bug Fixes
+
+* **docker:** runners depends_on 改为列表以符合 stack deploy 校验 ([3c2d441](https://github.com/rexqin/n8n/commit/3c2d441b46867991f22a3631d9af7ddb92e67cda))
+
+
+### Features
+
+* **oidc:** 支持通过 N8N_SSO_OIDC_ORGANIZATION_ID 传入 organization_id ([02025d5](https://github.com/rexqin/n8n/commit/02025d5df4dc5814466c6a81f8f53830f481672a))
+
+
 ## [2.14.10](https://github.com/rexqin/n8n/compare/n8n@2.14.9...n8n@2.14.10) (2026-04-06)
 
 
