@@ -21,7 +21,6 @@ volumes:
 services:
   n8n:
     image: registry.cn-hangzhou.aliyuncs.com/rexqin/n8n:${N8N_VERSION:-latest}
-    pull_policy: always
     user: root:root
     env_file:
       - .env
@@ -49,7 +48,6 @@ services:
 
   runners:
     image: registry.cn-hangzhou.aliyuncs.com/rexqin/runners:${N8N_VERSION:-latest}
-    pull_policy: always
     env_file:
       - .env.runner
     # docker stack deploy 校验要求 depends_on 为列表；Swarm 侧不强制顺序。本地 compose 仅保证 n8n 先启动，不等同于 service_healthy。
