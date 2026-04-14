@@ -253,6 +253,23 @@ export class OidcService {
 			throw new BadRequestError('Invalid authorization code');
 		}
 
+		if (tokens.refresh_token) {
+			try {
+				tokens = await this.openidClient.refreshTokenGrant(
+					configuration,
+					tokens.refresh_token,
+					additionalTokenEndpointParameters,
+				);
+
+				this.logger.info(
+					`refreshToken token ${JSON.stringify(tokens)} originalTokenEndpointParameters ${JSON.stringify(additionalTokenEndpointParameters)}`,
+				);
+			} catch (error) {
+				this.logger.error('Failed to refresh token', { error });
+				throw new BadRequestError('Invalid refresh token');
+			}
+		}
+
 		let claims;
 		try {
 			claims = tokens.claims();
