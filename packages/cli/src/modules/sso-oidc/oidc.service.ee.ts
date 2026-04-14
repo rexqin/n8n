@@ -201,7 +201,7 @@ export class OidcService {
 
 		// Include the custom n8n scope if provisioning is enabled
 		const scope = provisioningEnabled
-			? `openid email profile offline_access ${provisioningConfig.scopesName}`
+			? `openid email profile ${provisioningConfig.scopesName}`
 			: 'openid email profile';
 
 		const authorizationURL = this.openidClient.buildAuthorizationUrl(configuration, {
