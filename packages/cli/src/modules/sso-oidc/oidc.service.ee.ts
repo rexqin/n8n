@@ -245,10 +245,6 @@ export class OidcService {
 				},
 				additionalTokenEndpointParameters,
 			);
-
-			this.logger.info(
-				`buildClaimsForProvisioning callbackUrl ${callbackUrl} token ${JSON.stringify(tokens)} originalTokenEndpointParameters ${JSON.stringify(additionalTokenEndpointParameters)}`,
-			);
 		} catch (error) {
 			this.logger.error('Failed to exchange authorization code for tokens', { error });
 			throw new BadRequestError('Invalid authorization code');
