@@ -228,13 +228,22 @@ export class OidcService {
 
 		const expectedState = this.verifyState(storedState);
 		const expectedNonce = this.verifyNonce(storedNonce);
+		const additionalTokenEndpointParameters =
+			this.globalConfig.sso.oidc.organizationId !== ''
+				? { organization_id: this.globalConfig.sso.oidc.organizationId }
+				: undefined;
 
 		let tokens;
 		try {
-			tokens = await this.openidClient.authorizationCodeGrant(configuration, callbackUrl, {
-				expectedState,
-				expectedNonce,
-			});
+			tokens = await this.openidClient.authorizationCodeGrant(
+				configuration,
+				callbackUrl,
+				{
+					expectedState,
+					expectedNonce,
+				},
+				additionalTokenEndpointParameters,
+			);
 		} catch (error) {
 			this.logger.error('Failed to exchange authorization code for tokens', { error });
 			throw new BadRequestError('Invalid authorization code');
@@ -359,7 +368,11 @@ export class OidcService {
 			typeof userInfo === 'object' && userInfo !== null && !Array.isArray(userInfo)
 				? (userInfo as Record<string, unknown>)
 				: {};
-		this.logger.info(`buildClaimsForProvisioning token ${accessToken} from token ${fromAccessToken} userinfo ${fromUserInfo} `);
+
+		this.logger.info(
+			`buildClaimsForProvisioning token ${accessToken} from token ${JSON.stringify(fromAccessToken)} userinfo ${JSON.stringify(fromUserInfo)} `,
+		);
+
 		return { ...fromAccessToken, ...fromUserInfo, ...idTokenClaims };
 	}
 
