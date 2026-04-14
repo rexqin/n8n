@@ -206,11 +206,5 @@ jobs:
 
             docker stack deploy --with-registry-auth -c docker-compose.yml "$ECS_STACK_NAME"
 
-            TARGET_SERVICE="${ECS_STACK_NAME}_n8n"
-            docker service update --with-registry-auth --force "$TARGET_SERVICE"
-
-            TARGET_RUNNER_SERVICE="${ECS_STACK_NAME}_runners"
-            docker service update --with-registry-auth --force "$TARGET_RUNNER_SERVICE"
-
             docker system prune -f
             docker image prune -f
