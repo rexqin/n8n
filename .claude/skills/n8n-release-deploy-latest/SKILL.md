@@ -29,6 +29,7 @@ description: "用于 n8n 发布链路自动化。只要用户提到发布、删 
 
 - 删除 release 时，必须使用不带 `--cleanup-tag` 的命令。
 - 任何 tag 相关操作都要先回显当前 commit 短 hash，避免误推。
+- 监控 `Release: Publish` 时，只能选择“开始时间晚于本次操作起点”的 run，禁止复用旧 run。
 - 监控 workflow 期间，如果超时进入后台，必须持续轮询直到 workflow 终态（`success` / `failure` / `cancelled`）。
 - 无论 `Release: Publish` 成功或失败，只要用户明确要求“执行完以后再 deploy”，都应在它结束后继续触发 ECS 部署。
 - 禁止使用 `--force` 推送分支；仅允许对 tag 使用 `--force`（用户已明确要求时）。
@@ -59,8 +60,17 @@ git push origin latest --force
 ### 3) 定位并监控 `Release: Publish`
 
 ```bash
-gh run list --workflow "Release: Publish" --limit 5
-gh run watch <run_id> --exit-status
+# 记录监控起点时间（UTC）
+start_time=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+
+# 仅选 startedAt > start_time 的最新 run
+run_id=$(
+  gh run list --workflow "Release: Publish" --limit 20 \
+    --json databaseId,startedAt \
+    --jq "[.[] | select(.startedAt > \"$start_time\")][0].databaseId"
+)
+
+gh run watch "$run_id" --exit-status
 ```
 
 若 `watch` 进入后台，继续轮询：
@@ -98,5 +108,5 @@ gh run view <deploy_run_id> --json status,conclusion,workflowName,url,displayTit
 
 - 若 release 不存在：继续流程，并明确提示“目标 release 不存在，已跳过”。
 - 若 `latest` 推送失败：立即停止并返回错误，不继续后续步骤。
-- 若找不到 `Release: Publish` 在跑：选最近一条并监控到结束，回报采用的 run id。
+- 若未找到 startedAt 晚于起点时间的 `Release: Publish`：等待并轮询，直到出现新 run 再开始监控；不要回退到旧 run。
 - 若 deploy 触发失败：返回完整报错并给出下一步建议（重试命令）。
