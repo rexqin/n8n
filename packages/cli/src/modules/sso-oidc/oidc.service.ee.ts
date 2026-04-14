@@ -245,7 +245,9 @@ export class OidcService {
 				},
 				additionalTokenEndpointParameters,
 			);
-			this.logger.info('Successfully exchanged authorization code for tokens', { tokens });
+			this.logger.info(
+				`Successfully exchanged authorization code for tokens ${JSON.stringify(tokens)}`,
+			);
 		} catch (error) {
 			this.logger.error('Failed to exchange authorization code for tokens', { error });
 			throw new BadRequestError('Invalid authorization code');
@@ -404,7 +406,9 @@ export class OidcService {
 		if (projectRoleMapping) {
 			await this.provisioningService.provisionProjectRolesForUser(user.id, projectRoleMapping);
 		}
-		this.logger.info('Successfully applied SSO provisioning', { user, claims });
+		this.logger.info(
+			`Successfully applied SSO provisioning for user ${user.id} with claims ${JSON.stringify(claims)}`,
+		);
 	}
 
 	private async broadcastReloadOIDCConfigurationCommand(): Promise<void> {
