@@ -399,6 +399,16 @@ describe('OIDC service', () => {
 	});
 
 	describe('loginUser', () => {
+		let originalOrganizationId: string;
+
+		beforeEach(() => {
+			originalOrganizationId = Container.get(GlobalConfig).sso.oidc.organizationId;
+		});
+
+		afterEach(() => {
+			Container.get(GlobalConfig).sso.oidc.organizationId = originalOrganizationId;
+		});
+
 		it('should handle new user login with valid callback URL', async () => {
 			const state = oidcService.generateState();
 			const nonce = oidcService.generateNonce();
@@ -732,6 +742,34 @@ describe('OIDC service', () => {
 				{
 					expectedState: state.plaintext,
 					expectedNonce: nonce.plaintext,
+				},
+				undefined,
+			);
+		});
+
+		it('should include organization_id in token exchange when configured', async () => {
+			Container.get(GlobalConfig).sso.oidc.organizationId = 'org_123';
+			const state = oidcService.generateState();
+			const nonce = oidcService.generateNonce();
+			const callbackUrl = new URL(
+				`http://localhost:5678/rest/sso/oidc/callback?code=invalid-code&state=${state.plaintext}`,
+			);
+
+			authorizationCodeGrantMock.mockRejectedValueOnce(
+				new Error('Authorization code exchange failed'),
+			);
+
+			await oidcService.loginUser(callbackUrl, state.signed, nonce.signed).catch(() => {});
+
+			expect(authorizationCodeGrantMock).toHaveBeenCalledWith(
+				expect.any(Object), // configuration
+				callbackUrl,
+				{
+					expectedState: state.plaintext,
+					expectedNonce: nonce.plaintext,
+				},
+				{
+					organization_id: 'org_123',
 				},
 			);
 		});

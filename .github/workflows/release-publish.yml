@@ -1,4 +1,4 @@
-name: "Release: Publish"
+name: 'Release: Publish'
 
 permissions:
   contents: read
@@ -10,7 +10,7 @@ on:
     types:
       - closed
     branches:
-      - "release/*"
+      - 'release/*'
 
 jobs:
   determine-version-info:
@@ -34,7 +34,7 @@ jobs:
       - name: Setup Node.js
         uses: ./.github/actions/setup-nodejs
         with:
-          build-command: ""
+          build-command: ''
           install-command: pnpm install --frozen-lockfile --dir ./.github/scripts --ignore-workspace
 
       - name: Determine track from package version number
@@ -64,7 +64,7 @@ jobs:
     uses: ./.github/workflows/release-create-github-releases.yml
     with:
       track: ${{ needs.determine-version-info.outputs.track }}
-      version-tag: "n8n@${{ needs.determine-version-info.outputs.version }}"
+      version-tag: 'n8n@${{ needs.determine-version-info.outputs.version }}'
       body: ${{ github.event.pull_request.body }}
       commit: ${{ github.event.pull_request.base.ref }}
     secrets: inherit
@@ -79,7 +79,7 @@ jobs:
     uses: ./.github/workflows/release-update-pointer-tag.yml
     with:
       track: ${{ needs.determine-version-info.outputs.track }}
-      version-tag: "n8n@${{ needs.determine-version-info.outputs.version }}"
+      version-tag: 'n8n@${{ needs.determine-version-info.outputs.version }}'
     secrets: inherit
 
   promote-stable-tag:
@@ -94,7 +94,7 @@ jobs:
     uses: ./.github/workflows/release-update-pointer-tag.yml
     with:
       track: stable
-      version-tag: "n8n@${{ needs.determine-version-info.outputs.new_stable_version }}"
+      version-tag: 'n8n@${{ needs.determine-version-info.outputs.new_stable_version }}'
     secrets: inherit
 
   merge-release-tag-to-master:
@@ -131,13 +131,7 @@ jobs:
 
   post-release:
     name: Run Post-release actions
-    needs:
-      [
-        determine-version-info,
-        create-github-release,
-        move-track-tag,
-        promote-stable-tag,
-      ]
+    needs: [determine-version-info, create-github-release, move-track-tag, promote-stable-tag]
     if: |
       always() &&
       needs.determine-version-info.result == 'success' &&
@@ -160,8 +154,7 @@ jobs:
   # ACR 的 latest/stable 指针在 post-release → release-push-to-channel 中打上；ECS 需在之后部署
   deploy-aliyun-ecs:
     name: Deploy to Aliyun ECS
-    needs:
-      [determine-version-info, create-github-release, publish-to-aliyun-acr]
+    needs: [determine-version-info, create-github-release, post-release, publish-to-aliyun-acr]
     if: github.event.pull_request.merged == true
     permissions:
       contents: read

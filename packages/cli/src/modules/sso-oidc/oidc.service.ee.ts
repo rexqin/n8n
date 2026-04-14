@@ -201,7 +201,7 @@ export class OidcService {
 
 		// Include the custom n8n scope if provisioning is enabled
 		const scope = provisioningEnabled
-			? `openid email profile ${provisioningConfig.scopesName}`
+			? `openid email profile offline_access ${provisioningConfig.scopesName}`
 			: 'openid email profile';
 
 		const authorizationURL = this.openidClient.buildAuthorizationUrl(configuration, {
@@ -229,12 +229,26 @@ export class OidcService {
 		const expectedState = this.verifyState(storedState);
 		const expectedNonce = this.verifyNonce(storedNonce);
 
+		const additionalTokenEndpointParameters =
+			this.globalConfig.sso.oidc.organizationId !== ''
+				? { organization_id: this.globalConfig.sso.oidc.organizationId }
+				: undefined;
+
 		let tokens;
 		try {
-			tokens = await this.openidClient.authorizationCodeGrant(configuration, callbackUrl, {
-				expectedState,
-				expectedNonce,
-			});
+			tokens = await this.openidClient.authorizationCodeGrant(
+				configuration,
+				callbackUrl,
+				{
+					expectedState,
+					expectedNonce,
+				},
+				additionalTokenEndpointParameters,
+			);
+
+			this.logger.info(
+				`buildClaimsForProvisioning callbackUrl ${callbackUrl} token ${JSON.stringify(tokens)} originalTokenEndpointParameters ${JSON.stringify(additionalTokenEndpointParameters)}`,
+			);
 		} catch (error) {
 			this.logger.error('Failed to exchange authorization code for tokens', { error });
 			throw new BadRequestError('Invalid authorization code');
@@ -359,11 +373,6 @@ export class OidcService {
 			typeof userInfo === 'object' && userInfo !== null && !Array.isArray(userInfo)
 				? (userInfo as Record<string, unknown>)
 				: {};
-		this.logger.info('buildClaimsForProvisioning', {
-			fromAccessToken,
-			fromUserInfo,
-			idTokenClaims,
-		});
 		return { ...fromAccessToken, ...fromUserInfo, ...idTokenClaims };
 	}
 

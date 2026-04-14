@@ -12,32 +12,32 @@
 #   - ACR_USERNAME / ACR_PASSWORD / ACR_REGISTRY（可选，用于 ECS 上 docker login）
 #   - /n8n、/n8n/runner 下 compose 所需变量（与 docker-compose.yml 中 env_file 对应）
 
-name: "Deploy: Aliyun ECS (n8n)"
+name: 'Deploy: Aliyun ECS (n8n)'
 
 on:
   workflow_dispatch:
     inputs:
       ref:
-        description: "Git ref to deploy (branch/tag/commit)，留空则用当前触发提交"
+        description: 'Git ref to deploy (branch/tag/commit)，留空则用当前触发提交'
         required: false
-        default: ""
+        default: ''
       n8n_version:
-        description: "镜像标签 N8N_VERSION（semver，如 2.14.3）；用于 pull 与 stack 部署"
+        description: '镜像标签 N8N_VERSION（semver，如 2.14.3）；用于 pull 与 stack 部署'
         required: false
-        default: ""
+        default: ''
 
   workflow_call:
     inputs:
       ref:
-        description: "Git ref to checkout for docker-compose 等仓库文件（留空则用触发工作流的提交 SHA）"
+        description: 'Git ref to checkout for docker-compose 等仓库文件（留空则用触发工作流的提交 SHA）'
         required: false
         type: string
-        default: ""
+        default: ''
       n8n_version:
-        description: "镜像标签 N8N_VERSION（semver）；用于 pull 与 stack 部署"
+        description: '镜像标签 N8N_VERSION（semver）；用于 pull 与 stack 部署'
         required: false
         type: string
-        default: ""
+        default: ''
 
 concurrency:
   group: deploy-aliyun-ecs
@@ -204,12 +204,8 @@ jobs:
             export N8N_VERSION
             export ECS_DEPLOY_NODE_ID
 
+            docker compose -f docker-compose.yml pull
             docker stack deploy --with-registry-auth -c docker-compose.yml "$ECS_STACK_NAME"
 
-            TARGET_SERVICE="${ECS_STACK_NAME}_n8n"
-            docker service update --with-registry-auth --force "$TARGET_SERVICE"
-
-            TARGET_RUNNER_SERVICE="${ECS_STACK_NAME}_runners"
-            docker service update --with-registry-auth --force "$TARGET_RUNNER_SERVICE"
-
             docker system prune -f
+            docker image prune -f
