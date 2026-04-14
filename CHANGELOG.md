@@ -1,3 +1,11 @@
+## [2.14.11](https://github.com/rexqin/n8n/compare/n8n@2.14.10...n8n@2.14.11) (2026-04-14)
+
+
+### Bug Fixes
+
+* **oidc:** 移除登录后的 refresh token 二次交换 ([d191f59](https://github.com/rexqin/n8n/commit/d191f592119f6f2a5df715e8aa45e710b668bc68))
+
+
 ## [2.14.10](https://github.com/rexqin/n8n/compare/n8n@2.14.10...n8n@2.14.10) (2026-04-14)
 
 
