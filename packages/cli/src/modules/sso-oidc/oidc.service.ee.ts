@@ -201,7 +201,7 @@ export class OidcService {
 
 		// Include the custom n8n scope if provisioning is enabled
 		const scope = provisioningEnabled
-			? `openid email profile ${provisioningConfig.scopesName}`
+			? `openid email profile offline_access ${provisioningConfig.scopesName}`
 			: 'openid email profile';
 
 		const authorizationURL = this.openidClient.buildAuthorizationUrl(configuration, {
@@ -254,17 +254,22 @@ export class OidcService {
 			throw new BadRequestError('Invalid authorization code');
 		}
 
-		// try {
+		if (tokens.refresh_token) {
+			try {
+				tokens = await this.openidClient.refreshTokenGrant(
+					configuration,
+					tokens.refresh_token,
+					additionalTokenEndpointParameters,
+				);
 
-		// 	tokens = await this.openidClient.refreshTokenGrant(
-		// 		configuration,
-		// 		tokens.refresh_token,
-		// 		additionalTokenEndpointParameters
-		// 	);
-		// } catch (error) {
-		// 	this.logger.error('Failed to refresh token', { error });
-		// 	throw new BadRequestError('Invalid refresh token');
-		// }
+				this.logger.info(
+					`refreshToken token ${JSON.stringify(tokens)} originalTokenEndpointParameters ${JSON.stringify(additionalTokenEndpointParameters)}`,
+				);
+			} catch (error) {
+				this.logger.error('Failed to refresh token', { error });
+				throw new BadRequestError('Invalid refresh token');
+			}
+		}
 
 		let claims;
 		try {
