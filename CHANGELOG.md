@@ -1,3 +1,16 @@
+## [2.14.11](https://github.com/rexqin/n8n/compare/n8n@2.14.10...n8n@2.14.11) (2026-04-14)
+
+
+### Bug Fixes
+
+* **oidc:** 移除登录后的 refresh token 二次交换 ([d191f59](https://github.com/rexqin/n8n/commit/d191f592119f6f2a5df715e8aa45e710b668bc68))
+
+
+### Features
+
+* **oidc:** 刷新 access token 后再用于预配声明构建 ([d33806d](https://github.com/rexqin/n8n/commit/d33806db95ea9c4cd83a2978ab09e8a0e9e3f81d))
+
+
 ## [2.14.10](https://github.com/rexqin/n8n/compare/n8n@2.14.10...n8n@2.14.10) (2026-04-14)
 
 
