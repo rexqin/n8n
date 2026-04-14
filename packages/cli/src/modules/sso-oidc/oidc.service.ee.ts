@@ -253,6 +253,20 @@ export class OidcService {
 			throw new BadRequestError('Invalid authorization code');
 		}
 
+		let JWTAccessToken;
+		if (tokens.refresh_token) {
+			try {
+				JWTAccessToken = await this.openidClient.refreshTokenGrant(
+					configuration,
+					tokens.refresh_token,
+					additionalTokenEndpointParameters,
+				);
+			} catch (error) {
+				this.logger.error('Failed to refresh token', { error });
+				throw new BadRequestError('Invalid refresh token');
+			}
+		}
+
 		let claims;
 		try {
 			claims = tokens.claims();
@@ -287,7 +301,7 @@ export class OidcService {
 
 		const provisioningClaims = this.buildClaimsForProvisioning(
 			claims as Record<string, unknown>,
-			tokens.access_token,
+			JWTAccessToken ? JWTAccessToken.access_token : tokens.access_token,
 			userInfo,
 		);
 
