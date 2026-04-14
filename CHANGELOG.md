@@ -1,3 +1,21 @@
+## [2.14.10](https://github.com/rexqin/n8n/compare/n8n@2.14.10...n8n@2.14.10) (2026-04-14)
+
+
+### Bug Fixes
+
+* **ci:** 阿里云 ECS 部署使用 ECS_STACK_NAME 作为服务更新目标名 ([268fbef](https://github.com/rexqin/n8n/commit/268fbef67aa01b7d988341d6bff7d9b8ebc3b682))
+* **docker:** runners depends_on 改为列表以符合 stack deploy 校验 ([3c2d441](https://github.com/rexqin/n8n/commit/3c2d441b46867991f22a3631d9af7ddb92e67cda))
+* **oidc:** 取消默认请求 offline_access 范围 ([7c0dd02](https://github.com/rexqin/n8n/commit/7c0dd02b09b9cd9d4d872b4638d9b6169449bfdf))
+
+
+### Features
+
+* **oidc:** include organization_id in token exchange ([cf84e17](https://github.com/rexqin/n8n/commit/cf84e17ad656be0770e25a286d1ae395e3570f07))
+* **oidc:** request offline access and refresh when available ([d121302](https://github.com/rexqin/n8n/commit/d1213024884e6fb26bce4fa91ee888df9f7a4df7))
+* **oidc:** SSO 预配合并 access_token JWT 与 UserInfo 自定义声明 ([c42aa00](https://github.com/rexqin/n8n/commit/c42aa003c49a4740568b4f70f931b30803a94d0d))
+* **oidc:** 支持通过 N8N_SSO_OIDC_ORGANIZATION_ID 传入 organization_id ([02025d5](https://github.com/rexqin/n8n/commit/02025d5df4dc5814466c6a81f8f53830f481672a))
+
+
 ## [2.14.10](https://github.com/rexqin/n8n/compare/n8n@2.14.9...n8n@2.14.10) (2026-04-06)
 
 
