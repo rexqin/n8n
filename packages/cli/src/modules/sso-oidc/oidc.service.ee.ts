@@ -228,6 +228,7 @@ export class OidcService {
 
 		const expectedState = this.verifyState(storedState);
 		const expectedNonce = this.verifyNonce(storedNonce);
+
 		const additionalTokenEndpointParameters =
 			this.globalConfig.sso.oidc.organizationId !== ''
 				? { organization_id: this.globalConfig.sso.oidc.organizationId }
@@ -244,10 +245,26 @@ export class OidcService {
 				},
 				additionalTokenEndpointParameters,
 			);
+
+			this.logger.info(
+				`buildClaimsForProvisioning callbackUrl ${callbackUrl} token ${JSON.stringify(tokens)} originalTokenEndpointParameters ${JSON.stringify(additionalTokenEndpointParameters)}`,
+			);
 		} catch (error) {
 			this.logger.error('Failed to exchange authorization code for tokens', { error });
 			throw new BadRequestError('Invalid authorization code');
 		}
+
+		// try {
+
+		// 	tokens = await this.openidClient.refreshTokenGrant(
+		// 		configuration,
+		// 		tokens.refresh_token,
+		// 		additionalTokenEndpointParameters
+		// 	);
+		// } catch (error) {
+		// 	this.logger.error('Failed to refresh token', { error });
+		// 	throw new BadRequestError('Invalid refresh token');
+		// }
 
 		let claims;
 		try {
@@ -368,10 +385,6 @@ export class OidcService {
 			typeof userInfo === 'object' && userInfo !== null && !Array.isArray(userInfo)
 				? (userInfo as Record<string, unknown>)
 				: {};
-
-		this.logger.info(
-			`buildClaimsForProvisioning token ${accessToken} from token ${JSON.stringify(fromAccessToken)} userinfo ${JSON.stringify(fromUserInfo)} `,
-		);
 
 		return { ...fromAccessToken, ...fromUserInfo, ...idTokenClaims };
 	}
