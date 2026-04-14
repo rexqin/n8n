@@ -359,6 +359,7 @@ export class OidcService {
 			typeof userInfo === 'object' && userInfo !== null && !Array.isArray(userInfo)
 				? (userInfo as Record<string, unknown>)
 				: {};
+		this.logger.info(`buildClaimsForProvisioning token ${accessToken} from token ${fromAccessToken} userinfo ${fromUserInfo} `);
 		return { ...fromAccessToken, ...fromUserInfo, ...idTokenClaims };
 	}
 
